@@ -8,5 +8,8 @@ export const load = async (event) => {
 	if (response === undefined) {
 		throw error(404, 'Templates not found');
 	}
-	return { templates: response.templates };
+	return {
+		templates: response.templates,
+		templateData: event.url.searchParams.get('templateData') ?? '',
+	};
 };

@@ -9,10 +9,8 @@ export const POST: RequestHandler = async (request) => {
 	try {
 		let requestBody = await request.request.json();
 		const templateName = request.params.template;
-		console.log('render:', templateName, requestBody);
 		const template = $templates![templateName!];
 		const rendered = template.fn(requestBody ?? {});
-		console.log('serving:', rendered);
 		return new Response(JSON.stringify(rendered));
 	}catch (error){
 		return new Response(JSON.stringify(error),{status:400});
