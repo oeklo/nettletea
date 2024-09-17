@@ -6,7 +6,19 @@ interface Data {
 
 export default {
 	name: 'hello-world',
-	fn: ({ name }) => `Hello ${name}!`,
+	fn: ({ name }) => {
+		return {
+			'blocks': [
+				{
+					'text': {
+						'type': 'mrkdwn',
+						'text': `hello ${name}`
+					},
+					'type': 'section'
+				}
+			]
+		};
+	},
 	examples: {
 		default: {
 			name: 'World'

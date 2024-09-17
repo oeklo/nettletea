@@ -32,6 +32,15 @@
 	afterNavigate(() => {
 		templateData = $page.data.templateData;
 	});
+
+	async function send(event: unknown){
+		console.log(event);
+
+		await fetch(`/api/template/${$page.params.template}/send`, {
+			method: 'POST',
+			body: templateData,
+		});
+	}
 </script>
 
 <div>
@@ -46,4 +55,10 @@
 
 <div>
 	<textarea class="w-full p-4 rounded-box" rows="10" bind:value={rendered} readonly placeholder="Preview" />
+</div>
+
+<div class="py-4">
+	<button type="button" class="btn" on:click={send}>
+		Send
+	</button>
 </div>
