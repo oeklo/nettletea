@@ -1,21 +1,28 @@
 /** @type {import('tailwindcss').Config} */
-import { skeleton } from '@skeletonlabs/tw-plugin';
-import { join } from 'path';
-import { myCustomTheme } from './theme'
+import daisyui from 'daisyui';
+
 export default {
+	daisyui: {
+		themes: [
+			{
+				nettletea: {
+					'primary': '#60b579',
+					'secondary': '#cab642',
+					'accent': '#94c356',
+					'neutral': '#b97340',
+					'base-100': '#ffffff',
+					'info': '#94c356',
+					'success': '#00b565',
+					'warning': '#cab642',
+					'error': '#b97340'
+				}
+			}
+		]
+	},
 	content: [
-		'./src/**/*.{html,js,svelte,ts}',
-		join(require.resolve('@skeletonlabs/skeleton'), '../**/*.{html,js,svelte,ts}')
+		'./src/**/*.{html,js,svelte,ts}'
 	],
 
-	plugins: [
-		skeleton({
-			themes: {
-				custom: [
-					myCustomTheme
-				]
-			}
-		})
-	],
+	plugins: [daisyui]
 };
 

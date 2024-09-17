@@ -8,7 +8,10 @@ const getTemplates = async () => {
 	};
 };
 export const templates = readable<any>(null, (set) => {
-	getTemplates().then(set);
+	getTemplates().then((templates: any)=>{
+		console.log({ templates });
+		set(templates);
+	});
 });
 
 function asDescriptor<T>(template: Template<T>): TemplateDescr<T> {

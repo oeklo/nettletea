@@ -35,15 +35,15 @@
 </script>
 
 <div>
-	<textarea class="text-black w-full p-4 " rows="10" bind:value={templateData} placeholder="Template data" />
+	<textarea class="w-full p-4 rounded-box" rows="10" bind:value={templateData} placeholder="Template data" />
 </div>
 
 <div class="py-4">
-	<button type="button" class="btn bg-surface-500 text-black" on:click={async () => await tryRender(templateData)}>
+	<button type="button" class="btn" on:click={async () => await tryRender(templateData)}>
 		Render
 	</button>
 </div>
 
 <div>
-	<textarea class="text-black w-full p-4" rows="10" bind:value={rendered} readonly placeholder="Preview" />
+	<textarea class="w-full p-4 rounded-box" rows="10" bind:value={rendered} readonly placeholder="Preview" />
 </div>

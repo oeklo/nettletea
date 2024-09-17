@@ -3,7 +3,6 @@ import ts from 'typescript-eslint';
 import svelte from 'eslint-plugin-svelte';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
-import node from '@sveltejs/adapter-node';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -31,17 +30,7 @@ export default [
 	{
 		ignores: ['build/', '.svelte-kit/', 'dist/']
 	},
-	{ rules: { '@typescript-eslint/no-explicit-any': 'off' },
-		kit: {
-			// Adapter for Node.js
-			adapter: node(),
-
-			// Vite configuration
-			vite: {
-				plugins: [
-					dynamicImportVars()
-				]
-			}
-		}
+	{
+		rules: { '@typescript-eslint/no-explicit-any': 'off' },
 	}
 ];
