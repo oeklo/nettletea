@@ -1,12 +1,12 @@
-import type { Template } from '$lib';
+import type { Template } from '../index.ts';
 
 interface Data {
 	name: string;
 }
 
 export default {
-	name: 'hello-world',
-	fn: ({ name }) => {
+	name: 'Hello World',
+	fn: ({ name }: Data) => {
 		return {
 			'blocks': [
 				{
@@ -16,7 +16,8 @@ export default {
 					},
 					'type': 'section'
 				}
-			]
+			],
+			text: `hello ${name}`,
 		};
 	},
 	examples: {
