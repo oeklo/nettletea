@@ -1,38 +1,82 @@
-# create-svelte
+# Nettle Tea
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+Template Server for Slack.
 
-## Creating a project
+## Purpose
 
-If you're seeing this, you've probably already done this step. Congrats!
+Nettle Tea is intended as a transactional message server for Slack.
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+It exposes endpoints to preview and send messages generated from developer-provided templates and user provided data.
 
-# create a new project in my-app
-npm create svelte@latest my-app
+## Usage
+
+Template:
+```ts
+import type { Template } from '../index.ts';
+import { Type } from '@fastify/type-provider-typebox';
+
+interface Data {
+	name: string;
+}
+
+export default {
+	name: 'Hello World',
+	fn: ({ name }: Data) => {
+		return {
+			'blocks': [
+				{
+					'text': {
+						'type': 'mrkdwn',
+						'text': `hello ${name}`
+					},
+					'type': 'section'
+				}
+			],
+			text: `hello ${name}`,
+		};
+	},
+	examples: {
+		default: {
+			name: 'World'
+		}
+	},
+	schema: Type.Object({
+		name: Type.String()
+	})
+} as Template<Data>;
 ```
 
-## Developing
+Server:
+```ts
+import Fastify from 'fastify';
+import { nettleTea } from './nettletea.js';
+import helloWorld from './template.js';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+const server = Fastify({
+	logger: true
+}).withTypeProvider<TypeBoxTypeProvider>();
 
-```bash
-npm run dev
+// swagger is currently optional:
+await server.register(import ('@fastify/swagger'), {
+	openapi: {	}
+});
+await server.register(import ('@fastify/swagger-ui'), {
+	routePrefix: '/documentation'
+});
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+nettleTea({ server, templates: {helloWorld} });
+
+server.listen({ port: 3000 }, function(err: Error | null) {
+	if (err) {
+		server.log.error(err);
+		process.exit(1);
+	}
+});
 ```
 
-## Building
+## Disclaimer
 
-To create a production version of your app:
+Slack is a trademark and service mark of Slack Technologies, Inc., registered in the U.S. and in other countries.
 
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+Neither the author of this project not the project itself are not affiliated with Slack Technologies.

@@ -1,4 +1,5 @@
 import type { Template } from '../index.ts';
+import { Type } from '@fastify/type-provider-typebox';
 
 interface Data {
 	name: string;
@@ -24,5 +25,8 @@ export default {
 		default: {
 			name: 'World'
 		}
-	}
+	},
+	schema: Type.Object({
+		name: Type.String()
+	})
 } as Template<Data>;
