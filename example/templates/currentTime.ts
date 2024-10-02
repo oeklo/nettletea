@@ -1,14 +1,14 @@
-import type { Template } from '../index.ts';
+import type { Template } from 'nettletea';
 import { Type } from '@fastify/type-provider-typebox';
 
-interface Data {
+export interface Data {
 	currentTime: string;
 }
 
 export default {
 	name: 'Current Time',
 	fn: ({ currentTime }: Data) => {
-		const text = `Now is ${new Date(Date.parse(currentTime)).toLocaleString('de-AT')}!`;
+		const text = `Now is ${new Date(Date.parse(currentTime)).toLocaleString('de')}!`;
 		console.log(text)
 		return{
 			'blocks': [

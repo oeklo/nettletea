@@ -1,7 +1,7 @@
-import type { Template } from '../index.ts';
+import type { Template } from '../index';
 import { Type } from '@fastify/type-provider-typebox';
 
-interface Data {
+export interface Data {
 	name: string;
 }
 

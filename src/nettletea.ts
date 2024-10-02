@@ -1,15 +1,10 @@
 import path from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Type } from '@fastify/type-provider-typebox';
-import { type ChatPostMessageArguments, WebClient } from '@slack/web-api';
-import { type Template } from './lib/index.js';
-import { NotFound, resolveChannelIds, resolveUserIds } from './lib/slack.js';
-import { tenRetriesInAboutThirtyMinutes } from '@slack/web-api/dist/retry-policies.js';
-
-const web = new WebClient(process.env.SLACK__TOKEN, {
-	retryConfig: tenRetriesInAboutThirtyMinutes,
-	agent
-});
+import slack from '@slack/web-api';
+import { type ChatPostMessageArguments, WebClient, WebClientOptions } from '@slack/web-api';
+import { type Template } from './types';
+import { NotFound, resolveChannelIds, resolveUserIds } from './slack';
 
 interface PayloadBody {
 	payload: unknown;
@@ -20,13 +15,13 @@ interface SendBody extends PayloadBody {
 	to_channels?: string[];
 }
 
-function mkSendHandler(template: Template<any>) {
-	return async function(request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) {
+function mkSendHandler(template: Template<any>, slackClient: WebClient) {
+	return async function (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) {
 		const rendered = template.fn(request.body.payload ?? {});
 
 		let users;
 		try {
-			users = await resolveUserIds(request.body.to_users ?? [], web);
+			users = await resolveUserIds(request.body.to_users ?? [], slackClient);
 		} catch (error) {
 			reply.code(404).send({ error: 'user not found', object: (error as NotFound).name });
 			return;
@@ -34,19 +29,14 @@ function mkSendHandler(template: Template<any>) {
 
 		let channels;
 		try {
-			channels = await resolveChannelIds(request.body.to_channels ?? [], web);
+			channels = await resolveChannelIds(request.body.to_channels ?? [], slackClient);
 		} catch (error) {
-			reply.code(404).send({ error: 'user not found', object: (error as NotFound).name });
+			reply.code(404).send({ error: 'channel not found', object: (error as NotFound).name });
 			return;
-
 		}
 
-		const allChannels = [
-			...users,
-			...channels
-		];
-		for (const channel of allChannels)
-			await web.chat.postMessage({
+		for (const channel of [...users, ...channels])
+			await slackClient.chat.postMessage({
 				channel,
 				...rendered
 			} as ChatPostMessageArguments);
@@ -54,12 +44,21 @@ function mkSendHandler(template: Template<any>) {
 }
 
 interface NettleTeaArgs {
-	server: FastifyInstance,
-	root?: string
-	templates: { [templateName: string]: Template<any> }
+	server: FastifyInstance;
+	root?: string;
+	templates: { [templateName: string]: Template<any> };
+	slackToken: string;
+	slackOptions: WebClientOptions;
 }
 
-export function nettleTea({ server, root, templates }: NettleTeaArgs) {
+export function nettleTea({ server, root, templates, slackToken, slackOptions }: NettleTeaArgs) {
+	const slackClient = new WebClient(
+		slackToken,
+		slackOptions ?? {
+			retryConfig: slack.retryPolicies.tenRetriesInAboutThirtyMinutes
+		}
+	);
+
 	const root_ = path.join(root ?? '/', '/t');
 
 	for (const [name, template] of Object.entries(templates)) {
@@ -73,14 +72,14 @@ export function nettleTea({ server, root, templates }: NettleTeaArgs) {
 		server.route({
 			method: 'POST',
 			url: path.join(root_, name),
-			handler: async function(request: FastifyRequest<{
-				Body: PayloadBody,
-			}>) {
+			handler: async function (
+				request: FastifyRequest<{
+					Body: PayloadBody;
+				}>
+			) {
 				return template.fn(request.body.payload ?? {});
 			},
 			schema: {
-				operationId: `render${name}`,
-				tags: ['render', name],
 				body: Type.Object({
 					payload: Type.Ref(schemaId)
 				})
@@ -90,23 +89,24 @@ export function nettleTea({ server, root, templates }: NettleTeaArgs) {
 		server.route({
 			method: 'POST',
 			url: path.join(root_, `${name}/send`),
-			handler: mkSendHandler(template),
+			handler: mkSendHandler(template, slackClient),
 
 			schema: {
-				operationId: `send${name}`,
-				tags: ['send', name],
 				body: {
 					type: 'object',
 					content: {
 						'application/json': {
-							schema: Type.Object({
-								payload: Type.Ref(schemaId),
-								to_users: Type.Optional(Type.Array(Type.String({ format: 'email' }))),
-								to_channels: Type.Optional(Type.Array(Type.String()))
-							}, {
-								minProperties: 2,
-								additionalProperties: false
-							}),
+							schema: Type.Object(
+								{
+									payload: Type.Ref(schemaId),
+									to_users: Type.Optional(Type.Array(Type.String({ format: 'email' }))),
+									to_channels: Type.Optional(Type.Array(Type.String()))
+								},
+								{
+									minProperties: 2,
+									additionalProperties: false
+								}
+							),
 							examples: template.examples
 						}
 					}

@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { nettleTea } from './nettletea.js';
-import { all as templates } from './lib/templates/index.js';
+import { nettleTea } from '../src';
+import { all as templates } from './templates';
 
 const server = Fastify({
 	logger: true
