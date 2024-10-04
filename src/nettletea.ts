@@ -1,8 +1,7 @@
 import path from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Type } from '@fastify/type-provider-typebox';
-import slack from '@slack/web-api';
-import { type ChatPostMessageArguments, WebClient, WebClientOptions } from '@slack/web-api';
+import slack, { type ChatPostMessageArguments, WebClient, WebClientOptions } from '@slack/web-api';
 import { type Template } from './types';
 import { NotFound, resolveChannelIds, resolveUserIds } from './slack';
 
@@ -24,6 +23,7 @@ function mkSendHandler(template: Template<any>, slackClient: WebClient) {
 		try {
 			users = await resolveUserIds(request.body.to_users ?? [], slackClient);
 		} catch (error) {
+			console.error(error);
 			reply.code(404).send({ error: 'user not found', object: (error as NotFound).name });
 			return;
 		}
@@ -32,6 +32,7 @@ function mkSendHandler(template: Template<any>, slackClient: WebClient) {
 		try {
 			channels = await resolveChannelIds(request.body.to_channels ?? [], slackClient);
 		} catch (error) {
+			console.error(error);
 			reply.code(404).send({ error: 'channel not found', object: (error as NotFound).name });
 			return;
 		}

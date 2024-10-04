@@ -78,7 +78,7 @@ export const resolveChannelIds = async (channelNames: string[], slack: WebClient
 const userCache: { [email: string]: string } = {};
 
 async function getUserId(email: string, slack: WebClient): Promise<string> {
-	if (Object.keys(userCache).includes(email))
+	if (email in userCache)
 		return userCache[email];
 	else {
 		const user = await slack.users.lookupByEmail({ email });
