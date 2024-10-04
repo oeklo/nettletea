@@ -17,7 +17,8 @@ interface SendBody extends PayloadBody {
 
 function mkSendHandler(template: Template<any>, slackClient: WebClient) {
 	return async function (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) {
-		const rendered = template.fn(request.body.payload ?? {});
+		const rendered_ = template.fn(request.body.payload ?? {}, slackClient);
+		const rendered = rendered_ instanceof Promise ? await rendered_ : rendered_;
 
 		let users;
 		try {
@@ -77,7 +78,7 @@ export function nettleTea({ server, root, templates, slackToken, slackOptions }:
 					Body: PayloadBody;
 				}>
 			) {
-				return template.fn(request.body.payload ?? {});
+				return template.fn(request.body.payload ?? {}, slackClient);
 			},
 			schema: {
 				body: Type.Object({
