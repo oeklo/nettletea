@@ -9,7 +9,7 @@
 	],
 	"scripts": {
 		"build": "node build.js",
-		"prepublishOnly": "npm run build"
+		"postbuild": "tsc --emitDeclarationOnly -p tsconfig.json"
 	},
 	"devDependencies": {
 		"@slack/types": "^2.14.0",
