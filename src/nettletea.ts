@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Type } from '@fastify/type-provider-typebox';
+import '@fastify/swagger';
 import slack, { type ChatPostMessageArguments, WebClient, WebClientOptions } from '@slack/web-api';
 import { type Template } from './types';
 import { NotFound, resolveChannelIds, resolveUserIds } from './slack';
@@ -86,6 +87,7 @@ export function nettleTea({ server, root, templates, slackToken, slackOptions }:
 				}
 			},
 			schema: {
+				operationId: name,
 				body: Type.Object({
 					payload: Type.Ref(schemaId)
 				})
@@ -98,6 +100,7 @@ export function nettleTea({ server, root, templates, slackToken, slackOptions }:
 			handler: mkSendHandler(template, slackClient),
 
 			schema: {
+				operationId: `${name}Send`,
 				body: {
 					type: 'object',
 					content: {
