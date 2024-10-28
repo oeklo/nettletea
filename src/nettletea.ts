@@ -18,6 +18,7 @@ interface SendBody extends PayloadBody {
 
 function mkSendHandler(template: Template<any>, slackClient: WebClient, overrideTo?: string) {
 	return async function (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) {
+		console.log(JSON.stringify(request.body, null, 2));
 		try {
 			const rendered_ = template.fn(request.body.payload ?? {}, slackClient);
 			const rendered = rendered_ instanceof Promise ? await rendered_ : rendered_;
