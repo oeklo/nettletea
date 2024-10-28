@@ -87,7 +87,7 @@ export const resolveChannelIds = async (
 
 const userCache: { [email: string]: string } = {};
 
-async function getUserId(email: string, slack: WebClient): Promise<string> {
+export async function getUserId(email: string, slack: WebClient): Promise<string> {
 	if (email in userCache) return userCache[email];
 
 	try {

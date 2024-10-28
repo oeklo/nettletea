@@ -3,8 +3,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Type } from '@fastify/type-provider-typebox';
 import '@fastify/swagger';
 import slack, { type ChatPostMessageArguments, WebClient, WebClientOptions } from '@slack/web-api';
+
 import { type Template } from './types';
-import { NotFound, resolveChannelIds, resolveUserIds } from './slack';
+import { getUserId, NotFound, resolveChannelIds, resolveUserIds } from './slack';
 
 interface PayloadBody {
 	payload: unknown;
@@ -15,11 +16,20 @@ interface SendBody extends PayloadBody {
 	to_channels?: string[];
 }
 
-function mkSendHandler(template: Template<any>, slackClient: WebClient) {
+function mkSendHandler(template: Template<any>, slackClient: WebClient, overrideTo?: string) {
 	return async function (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) {
 		try {
 			const rendered_ = template.fn(request.body.payload ?? {}, slackClient);
 			const rendered = rendered_ instanceof Promise ? await rendered_ : rendered_;
+
+			if (overrideTo) {
+				const channel = await getUserId(overrideTo, slackClient);
+				await slackClient.chat.postMessage({
+					channel,
+					...rendered
+				});
+				return;
+			}
 
 			const users = await resolveUserIds(request.body.to_users ?? [], slackClient);
 			const channels = await resolveChannelIds(request.body.to_channels ?? [], slackClient);
@@ -45,9 +55,17 @@ interface NettleTeaArgs {
 	templates: { [templateName: string]: Template<any> };
 	slackToken: string;
 	slackOptions: WebClientOptions;
+	overrideTo?: string;
 }
 
-export function nettleTea({ server, root, templates, slackToken, slackOptions }: NettleTeaArgs) {
+export function nettleTea({
+	server,
+	root,
+	templates,
+	slackToken,
+	slackOptions,
+	overrideTo,
+}: NettleTeaArgs) {
 	const slackClient = new WebClient(
 		slackToken,
 		slackOptions ?? {
@@ -97,7 +115,7 @@ export function nettleTea({ server, root, templates, slackToken, slackOptions }:
 		server.route({
 			method: 'POST',
 			url: path.join(root_, `${name}/send`),
-			handler: mkSendHandler(template, slackClient),
+			handler: mkSendHandler(template, slackClient, overrideTo),
 
 			schema: {
 				operationId: `${name}Send`,
