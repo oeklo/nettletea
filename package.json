@@ -12,23 +12,23 @@
 		"postbuild": "tsc --emitDeclarationOnly -p tsconfig.json"
 	},
 	"devDependencies": {
-		"@fastify/swagger": "^9.2.0",
+		"@fastify/swagger": "^9.3.0",
 		"@slack/types": "^2.14.0",
-		"@types/node": "^22.1.0",
+		"@types/node": "^22.9.0",
 		"esbuild": "^0.24.0",
-		"eslint": "^9.0.0",
+		"eslint": "^9.15.0",
 		"eslint-config-prettier": "^9.1.0",
-		"fastify-cli": "^7.0.0",
-		"globals": "^15.0.0",
-		"i18next": "^23.16.4",
-		"prettier": "^3.1.1",
-		"prettier-plugin-svelte": "^3.1.2",
-		"typescript": "^5.0.0",
-		"typescript-eslint": "^8.0.0"
+		"fastify-cli": "^7.0.1",
+		"globals": "^15.12.0",
+		"i18next": "^23.16.5",
+		"prettier": "^3.3.3",
+		"prettier-plugin-svelte": "^3.2.8",
+		"typescript": "^5.6.3",
+		"typescript-eslint": "^8.14.0"
 	},
 	"type": "module",
 	"dependencies": {
-		"fastify": "^5.0.0"
+		"fastify": "^5.1.0"
 	},
 	"peerDependencies": {
 		"@fastify/swagger": "^9.2.0",
