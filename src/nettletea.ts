@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Type } from '@fastify/type-provider-typebox';
 import '@fastify/swagger';
 import slack, { type ChatPostMessageArguments, WebClient, WebClientOptions } from '@slack/web-api';
+import i18next, { TFunction } from 'i18next';
 
 import { type Template } from './types';
 import { getUserId, NotFound, resolveChannelIds, resolveUserIds } from './slack';
@@ -16,11 +17,16 @@ interface SendBody extends PayloadBody {
 	to_channels?: string[];
 }
 
-function mkSendHandler(template: Template<any>, slackClient: WebClient, overrideTo?: string) {
+function mkSendHandler(
+	template: Template<any>,
+	t: TFunction,
+	slackClient: WebClient,
+	overrideTo?: string
+) {
 	return async function (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) {
 		console.log(JSON.stringify(request.body, null, 2));
 		try {
-			const rendered_ = template.fn(request.body.payload ?? {}, slackClient);
+			const rendered_ = template.fn(request.body.payload ?? {}, t, slackClient);
 			const rendered = rendered_ instanceof Promise ? await rendered_ : rendered_;
 
 			if (overrideTo) {
@@ -57,51 +63,55 @@ interface NettleTeaArgs {
 	slackToken: string;
 	slackOptions: WebClientOptions;
 	overrideTo?: string;
+	lang?: string;
 }
 
-export function nettleTea({
-	server,
-	root,
-	templates,
-	slackToken,
-	slackOptions,
-	overrideTo,
-}: NettleTeaArgs) {
+export async function nettleTea(opts: NettleTeaArgs) {
 	const slackClient = new WebClient(
-		slackToken,
-		slackOptions ?? {
+		opts.slackToken,
+		opts.slackOptions ?? {
 			retryConfig: slack.retryPolicies.tenRetriesInAboutThirtyMinutes
 		}
 	);
 
-	const root_ = path.join(root ?? '/', '/t');
+	const root_ = path.join(opts.root ?? '/', '/t');
 
-	for (const [name, template] of Object.entries(templates)) {
+	const i18n = i18next.createInstance();
+	await i18n.init({
+		lng: opts.lang ?? 'en'
+	});
+
+	for (const [name, template] of Object.entries(opts.templates)) {
 		const schemaId = template.schema.$id ?? `${name}Input`;
-		server.addSchema({
+		opts.server.addSchema({
 			$id: schemaId,
 			examples: Object.values(template.examples),
 			...template.schema
 		});
 
-		server.route({
+		Object.entries(template.translations).map(([lang, translations]) =>
+			i18n.addResourceBundle(lang, name, translations)
+		);
+
+		const t = i18n.getFixedT(null, name);
+
+		opts.server.route({
 			method: 'POST',
 			url: path.join(root_, name),
 			handler: async function (
 				request: FastifyRequest<{
 					Body: PayloadBody;
 				}>,
-				reply: FastifyReply,
+				reply: FastifyReply
 			) {
 				try {
-					const rendered = template.fn(request.body.payload ?? {}, slackClient);
+					const rendered = template.fn(request.body.payload ?? {}, t, slackClient);
 					return rendered instanceof Promise ? await rendered : rendered;
 				} catch (error) {
 					console.error({ type: typeof error, error });
 
 					if (error instanceof NotFound) reply.code(404).send({ error: error.message });
 					else if (error instanceof Error) reply.code(500).send({ error: error.message });
-					else if (error instanceof Error) reply.code(500);
 					return;
 				}
 			},
@@ -113,10 +123,10 @@ export function nettleTea({
 			}
 		});
 
-		server.route({
+		opts.server.route({
 			method: 'POST',
 			url: path.join(root_, `${name}/send`),
-			handler: mkSendHandler(template, slackClient, overrideTo),
+			handler: mkSendHandler(template, t, slackClient, opts.overrideTo),
 
 			schema: {
 				operationId: `${name}Send`,
