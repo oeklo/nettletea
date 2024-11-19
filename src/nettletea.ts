@@ -28,29 +28,26 @@ function mkSendHandler(
 		try {
 			const rendered_ = template.fn(request.body.payload ?? {}, t, slackClient);
 			const rendered = rendered_ instanceof Promise ? await rendered_ : rendered_;
-
+			let targets: string[];
 			if (overrideTo) {
-				const channel = await getUserId(overrideTo, slackClient);
-				await slackClient.chat.postMessage({
-					channel,
-					...rendered
-				});
-				return;
+				targets = [await getUserId(overrideTo, slackClient)];
+			} else {
+				const users = await resolveUserIds(request.body.to_users ?? [], slackClient);
+				const channels = await resolveChannelIds(request.body.to_channels ?? [], slackClient);
+				targets = [...users, ...channels];
 			}
 
-			const users = await resolveUserIds(request.body.to_users ?? [], slackClient);
-			const channels = await resolveChannelIds(request.body.to_channels ?? [], slackClient);
-			for (const channel of [...users, ...channels])
+			for (const channel of targets)
 				await slackClient.chat.postMessage({
 					channel,
 					...rendered
 				} as ChatPostMessageArguments);
+			reply.code(204).send();
 		} catch (error) {
 			console.error({ type: typeof error, error });
 
 			if (error instanceof NotFound) reply.code(404).send({ error: error.message });
 			else if (error instanceof Error) reply.code(500).send({ error: error.message });
-			else if (error instanceof Error) reply.code(500);
 			return;
 		}
 	};
@@ -123,10 +120,12 @@ export async function nettleTea(opts: NettleTeaArgs) {
 			}
 		});
 
+		const url = path.join(root_, `${name}/send`);
+		const handler = mkSendHandler(template, t, slackClient, opts.overrideTo);
 		opts.server.route({
 			method: 'POST',
-			url: path.join(root_, `${name}/send`),
-			handler: mkSendHandler(template, t, slackClient, opts.overrideTo),
+			url,
+			handler,
 
 			schema: {
 				operationId: `${name}Send`,
@@ -147,6 +146,12 @@ export async function nettleTea(opts: NettleTeaArgs) {
 							),
 							examples: template.examples
 						}
+					}
+				},
+				response: {
+					'204': {
+						description: 'Successful response',
+						type: 'null'
 					}
 				}
 			}
