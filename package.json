@@ -42,8 +42,5 @@
   "author": {
     "name": "Rafal Krupinski"
   },
-  "sideEffects": false,
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
-  }
+  "sideEffects": false
 }
