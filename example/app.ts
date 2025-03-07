@@ -14,7 +14,11 @@ await server.register(import ('@fastify/swagger-ui'), {
 	routePrefix: '/documentation'
 });
 
-nettleTea({ server, templates });
+await nettleTea({
+	server,
+	templates,
+	slackToken: process.env.SlackToken!
+});
 
 server.listen({ port: 3000 , host: '::'}, function(err: Error | null) {
 	if (err) {

@@ -4,7 +4,8 @@ import type { WebClient } from '@slack/web-api';
 import type { TFunction } from 'i18next';
 
 export interface Message {
-	text: string;
+	/// Recommended for sending, unsupported for viewing
+	text?: string;
 	blocks: (KnownBlock | Block)[];
 }
 
