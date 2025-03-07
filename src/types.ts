@@ -9,9 +9,11 @@ export interface Message {
 	blocks: (KnownBlock | Block)[];
 }
 
+export type TemplateFunction<Data> = (data: Data, t: TFunction, slack: WebClient) => Message | Promise<Message>
+
 export interface Template<Data> {
 	examples: { [name: string]: Data };
-	fn: (data: Data, t: TFunction, slack: WebClient) => Message | Promise<Message>;
+	fn: TemplateFunction<Data>;
 	name: string;
 	schema: TSchema;
 	translations: { [lang: string]: { [key: string]: any } };

@@ -12,9 +12,45 @@ interface PayloadBody {
 	payload: unknown;
 }
 
+interface PreviewParams {
+	mode: 'header' | 'body';
+}
+
 interface SendBody extends PayloadBody {
 	to_users?: string[];
 	to_channels?: string[];
+}
+
+interface ResolveTargetArgs {
+	overrideTo?: string;
+	to_users?: string[];
+	to_channels?: string[];
+	slackClient: WebClient;
+}
+
+async function renderTemplate<Data>(
+	template: Template<Data>,
+	data: Data | undefined,
+	t: TFunction,
+	slack: WebClient
+) {
+	const rendered_ = template.fn(data ?? ({} as unknown as Data), t, slack);
+	return rendered_ instanceof Promise ? await rendered_ : rendered_;
+}
+
+async function resolveTargets({
+	overrideTo,
+	to_users,
+	to_channels,
+	slackClient
+}: ResolveTargetArgs): Promise<string[]> {
+	if (overrideTo) {
+		return [await getUserId(overrideTo, slackClient)];
+	} else {
+		const users = await resolveUserIds(to_users ?? [], slackClient);
+		const channels = await resolveChannelIds(to_channels ?? [], slackClient);
+		return [...users, ...channels];
+	}
 }
 
 function mkSendHandler(
@@ -26,16 +62,12 @@ function mkSendHandler(
 	return async function (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) {
 		console.log(JSON.stringify(request.body, null, 2));
 		try {
-			const rendered_ = template.fn(request.body.payload ?? {}, t, slackClient);
-			const rendered = rendered_ instanceof Promise ? await rendered_ : rendered_;
-			let targets: string[];
-			if (overrideTo) {
-				targets = [await getUserId(overrideTo, slackClient)];
-			} else {
-				const users = await resolveUserIds(request.body.to_users ?? [], slackClient);
-				const channels = await resolveChannelIds(request.body.to_channels ?? [], slackClient);
-				targets = [...users, ...channels];
-			}
+			const rendered = await renderTemplate(template, request.body.payload, t, slackClient);
+			const targets = await resolveTargets({
+				overrideTo,
+				slackClient,
+				...request.body
+			});
 
 			for (const channel of targets)
 				await slackClient.chat.postMessage({
@@ -50,6 +82,31 @@ function mkSendHandler(
 			else if (error instanceof Error) reply.code(500).send({ error: error.message });
 			return;
 		}
+	};
+}
+
+function mkViewHandler(template: Template<any>, t: TFunction, slackClient: WebClient) {
+	return async function (
+		request: FastifyRequest<{ Body: PayloadBody; Querystring: PreviewParams }>,
+		reply: FastifyReply
+	) {
+		let rendered;
+		try {
+			rendered = await renderTemplate(template, request.body.payload, t, slackClient);
+		} catch (error) {
+			console.error({ type: typeof error, error });
+
+			if (error instanceof NotFound) reply.code(404).send({ error: error.message });
+			else if (error instanceof Error) reply.code(500).send({ error: error.message });
+			return;
+		}
+		delete rendered.text;
+		const location = `https://app.slack.com/block-kit-builder/T4LJR706L#${JSON.stringify(rendered)}`;
+		// can't use location header dues to CORS
+		reply.code(303);
+		console.log({mode: request.query})
+		if (request.query.mode !== 'body') reply.header('Location', encodeURI(location)).send();
+		else reply.header('content-type','text/plain').send(location);
 	};
 }
 
@@ -153,6 +210,51 @@ export async function nettleTea(opts: NettleTeaArgs) {
 						description: 'Successful response',
 						type: 'null'
 					}
+				}
+			}
+		});
+
+		opts.server.route({
+			method: 'POST',
+			url: path.join(root_, `${name}/preview`),
+			handler: mkViewHandler(template, t, slackClient),
+
+			schema: {
+				querystring: {
+					type: 'object',
+					properties:{
+						mode:{
+							type:'string',
+							enum:[
+								'body',
+								'header'
+							],
+							default:'body'
+						}
+					}
+				},
+				operationId: `${name}Preview`,
+				body: {
+					type: 'object',
+					content: {
+						'application/json': {
+							schema: Type.Object(
+								{
+									payload: Type.Ref(schemaId)
+								},
+								{
+									additionalProperties: false
+								}
+							),
+							examples: template.examples
+						}
+					}
+				},
+				response: {
+					'303': {
+						description: 'Successful response',
+						type: 'string',
+					},
 				}
 			}
 		});
