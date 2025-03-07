@@ -58,7 +58,7 @@ interface NettleTeaArgs {
 	root?: string;
 	templates: { [templateName: string]: Template<any> };
 	slackToken: string;
-	slackOptions: WebClientOptions;
+	slackOptions?: WebClientOptions;
 	overrideTo?: string;
 	lang?: string;
 }
