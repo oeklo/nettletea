@@ -38,7 +38,8 @@
 	},
 	"license": "Apache-2.0",
 	"author": {
-		"name": "Rafal Krupinski"
+		"name": "Rafal Krupinski",
+		"email": "oeklo.it@fastmail.com"
 	},
 	"sideEffects": false
 }
