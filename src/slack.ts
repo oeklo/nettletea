@@ -25,19 +25,19 @@ const MAX_CHANNELS_LIST = 1000;
  */
 export const resolveChannelIds = async (
 	channelNames: string[],
-	slack: WebClient
+	slack: WebClient,
 ): Promise<string[]> => {
 	const resolvedChannels = new Map<string, string>();
 
 	const namesToFetch: string[] = [];
 
-	channelNames.forEach((name) => {
+	for (const name of channelNames) {
 		if (channelCache[name]) {
 			resolvedChannels.set(name, channelCache[name]);
 		} else {
 			namesToFetch.push(name);
 		}
-	});
+	}
 
 	let cursor: string | undefined = undefined;
 	while (namesToFetch.length > 0) {
@@ -45,11 +45,11 @@ export const resolveChannelIds = async (
 			exclude_archived: true,
 			limit: MAX_CHANNELS_LIST,
 			types: 'public_channel,private_channel',
-			cursor: cursor
+			cursor: cursor,
 		});
 
 		if (response.channels) {
-			response.channels.forEach((channel) => {
+			for (const channel of response.channels) {
 				if (channel.name && channel.id) {
 					channelCache[channel.name] = channel.id;
 
@@ -64,10 +64,10 @@ export const resolveChannelIds = async (
 						}
 					}
 				}
-			});
+			}
 		}
 
-		if (response.response_metadata && response.response_metadata.next_cursor) {
+		if (response.response_metadata?.next_cursor) {
 			cursor = response.response_metadata.next_cursor;
 		} else {
 			break;
@@ -76,36 +76,45 @@ export const resolveChannelIds = async (
 
 	// At this point, some channel names might not have been found
 	// You can choose to handle them as needed (e.g., throw an error or skip)
-	channelNames.forEach((name) => {
+	for (const name of channelNames) {
 		if (!resolvedChannels.has(name)) {
 			throw new NotFound(name, 'channel');
 		}
-	});
+	}
 
 	return [...resolvedChannels.values()];
 };
 
 const userCache: { [email: string]: string } = {};
 
-export async function getUserId(email: string, slack: WebClient): Promise<string> {
+export async function getUserId(
+	email: string,
+	slack: WebClient,
+): Promise<string> {
 	if (email in userCache) return userCache[email];
 
 	try {
 		const user = await slack.users.lookupByEmail({ email });
 		if (!user.ok) throw new NotFound(email, 'user');
 
-		const userId = user.user!.id!;
+		const userId = user.user?.id!;
 		userCache[email] = userId;
 		return userId;
 	} catch (error) {
 		console.error(error);
 		if (error instanceof NotFound) throw error;
 		const slackError = error as WebAPIPlatformError;
-		if (slackError.data.error == 'users_not_found') throw new NotFound(email, 'user');
+		if (slackError.data.error === 'users_not_found')
+			throw new NotFound(email, 'user');
 		throw error;
 	}
 }
 
-export async function resolveUserIds(emails: string[], slack: WebClient): Promise<string[]> {
-	return Promise.all(emails.map(async (email) => await getUserId(email, slack)));
+export async function resolveUserIds(
+	emails: string[],
+	slack: WebClient,
+): Promise<string[]> {
+	return Promise.all(
+		emails.map(async (email) => await getUserId(email, slack)),
+	);
 }

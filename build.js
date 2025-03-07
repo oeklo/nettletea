@@ -5,9 +5,7 @@ esbuild
 	.build({
 		bundle: true,
 		entryPoints: ['src/index.ts'],
-		external: [...Object.keys(pkg.peerDependencies || {}),
-			'@slack/web-api',
-		],
+		external: [...Object.keys(pkg.peerDependencies || {}), '@slack/web-api'],
 		format: 'esm',
 		minify: process.env.NODE_ENV === 'production',
 		outfile: 'dist/index.js',
