@@ -23,10 +23,7 @@ const MAX_CHANNELS_LIST = 1000;
  * @param slack - slack client
  * @returns A Map where keys are channel names and values are channel IDs
  */
-export const resolveChannelIds = async (
-	channelNames: string[],
-	slack: WebClient,
-): Promise<string[]> => {
+export const resolveChannelIds = async (channelNames: string[], slack: WebClient): Promise<string[]> => {
 	const resolvedChannels = new Map<string, string>();
 
 	const namesToFetch: string[] = [];
@@ -39,7 +36,7 @@ export const resolveChannelIds = async (
 		}
 	}
 
-	let cursor: string | undefined = undefined;
+	let cursor: string | undefined;
 	while (namesToFetch.length > 0) {
 		const response = await slack.conversations.list({
 			exclude_archived: true,
@@ -87,34 +84,25 @@ export const resolveChannelIds = async (
 
 const userCache: { [email: string]: string } = {};
 
-export async function getUserId(
-	email: string,
-	slack: WebClient,
-): Promise<string> {
+export async function getUserId(email: string, slack: WebClient): Promise<string> {
 	if (email in userCache) return userCache[email];
 
 	try {
 		const user = await slack.users.lookupByEmail({ email });
 		if (!user.ok) throw new NotFound(email, 'user');
 
-		const userId = user.user?.id!;
+		const userId = user.user!.id!;
 		userCache[email] = userId;
 		return userId;
 	} catch (error) {
 		console.error(error);
 		if (error instanceof NotFound) throw error;
 		const slackError = error as WebAPIPlatformError;
-		if (slackError.data.error === 'users_not_found')
-			throw new NotFound(email, 'user');
+		if (slackError.data.error === 'users_not_found') throw new NotFound(email, 'user');
 		throw error;
 	}
 }
 
-export async function resolveUserIds(
-	emails: string[],
-	slack: WebClient,
-): Promise<string[]> {
-	return Promise.all(
-		emails.map(async (email) => await getUserId(email, slack)),
-	);
+export async function resolveUserIds(emails: string[], slack: WebClient): Promise<string[]> {
+	return Promise.all(emails.map(async (email) => await getUserId(email, slack)));
 }

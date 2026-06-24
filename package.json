@@ -9,10 +9,12 @@
 	],
 	"scripts": {
 		"build": "node build.js",
+		"format": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off --unsafe",
 		"postbuild": "tsc --emitDeclarationOnly -p tsconfig.json",
 		"prepublishOnly": "npm run build"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.5.1",
 		"@fastify/swagger": "^9.4.2",
 		"@slack/types": "^2.14.0",
 		"@types/node": "^22.13.9",
@@ -36,12 +38,7 @@
 	"license": "Apache-2.0",
 	"author": {
 		"name": "Rafal Krupinski",
-		"email": "oeklo.it@fastmail.com"
+		"email": "rafal@oeklo.at"
 	},
-	"sideEffects": false,
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"esbuild"
-		]
-	}
+	"sideEffects": false
 }

@@ -2,19 +2,10 @@ import path from 'node:path';
 import { Type } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import '@fastify/swagger';
-import slack, {
-	type ChatPostMessageArguments,
-	WebClient,
-	type WebClientOptions,
-} from '@slack/web-api';
+import slack, { type ChatPostMessageArguments, WebClient, type WebClientOptions } from '@slack/web-api';
 import i18next, { type TFunction } from 'i18next';
 
-import {
-	NotFound,
-	getUserId,
-	resolveChannelIds,
-	resolveUserIds,
-} from './slack';
+import { getUserId, NotFound, resolveChannelIds, resolveUserIds } from './slack';
 import type { Message, Template } from './types';
 
 interface PayloadBody {
@@ -37,12 +28,7 @@ interface ResolveTargetArgs {
 	slackClient: WebClient;
 }
 
-async function renderTemplate<Data>(
-	template: Template<Data>,
-	data: Data | undefined,
-	t: TFunction,
-	slack: WebClient,
-) {
+async function renderTemplate<Data>(template: Template<Data>, data: Data | undefined, t: TFunction, slack: WebClient) {
 	const rendered_ = template.fn(data ?? ({} as unknown as Data), t, slack);
 	return rendered_ instanceof Promise ? await rendered_ : rendered_;
 }
@@ -61,24 +47,11 @@ async function resolveTargets({
 	return [...users, ...channels];
 }
 
-function mkSendHandler(
-	template: Template<any>,
-	t: TFunction,
-	slackClient: WebClient,
-	overrideTo?: string,
-) {
-	return async (
-		request: FastifyRequest<{ Body: SendBody }>,
-		reply: FastifyReply,
-	) => {
+function mkSendHandler(template: Template<any>, t: TFunction, slackClient: WebClient, overrideTo?: string) {
+	return async (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) => {
 		console.log(JSON.stringify(request.body, null, 2));
 		try {
-			const rendered = await renderTemplate(
-				template,
-				request.body.payload,
-				t,
-				slackClient,
-			);
+			const rendered = await renderTemplate(template, request.body.payload, t, slackClient);
 			const targets = await resolveTargets({
 				overrideTo,
 				slackClient,
@@ -94,39 +67,23 @@ function mkSendHandler(
 		} catch (error) {
 			console.error({ type: typeof error, error });
 
-			if (error instanceof NotFound)
-				reply.code(404).send({ error: error.message });
-			else if (error instanceof Error)
-				reply.code(500).send({ error: error.message });
+			if (error instanceof NotFound) reply.code(404).send({ error: error.message });
+			else if (error instanceof Error) reply.code(500).send({ error: error.message });
 			return;
 		}
 	};
 }
 
-function mkViewHandler(
-	template: Template<any>,
-	t: TFunction,
-	slackClient: WebClient,
-) {
-	return async (
-		request: FastifyRequest<{ Body: PayloadBody; Querystring: PreviewParams }>,
-		reply: FastifyReply,
-	) => {
+function mkViewHandler(template: Template<any>, t: TFunction, slackClient: WebClient) {
+	return async (request: FastifyRequest<{ Body: PayloadBody; Querystring: PreviewParams }>, reply: FastifyReply) => {
 		let rendered: Message;
 		try {
-			rendered = await renderTemplate(
-				template,
-				request.body.payload,
-				t,
-				slackClient,
-			);
+			rendered = await renderTemplate(template, request.body.payload, t, slackClient);
 		} catch (error) {
 			console.error({ type: typeof error, error });
 
-			if (error instanceof NotFound)
-				reply.code(404).send({ error: error.message });
-			else if (error instanceof Error)
-				reply.code(500).send({ error: error.message });
+			if (error instanceof NotFound) reply.code(404).send({ error: error.message });
+			else if (error instanceof Error) reply.code(500).send({ error: error.message });
 			return;
 		}
 		rendered.text = undefined;
@@ -134,20 +91,19 @@ function mkViewHandler(
 		// can't use location header dues to CORS
 		reply.code(303);
 		console.log({ mode: request.query });
-		if (request.query.mode !== 'body')
-			reply.header('Location', encodeURI(location)).send();
+		if (request.query.mode !== 'body') reply.header('Location', encodeURI(location)).send();
 		else reply.header('content-type', 'text/plain').send(location);
 	};
 }
 
 interface NettleTeaArgs {
-	server: FastifyInstance;
-	root?: string;
-	templates: { [templateName: string]: Template<any> };
-	slackToken: string;
-	slackOptions?: WebClientOptions;
-	overrideTo?: string;
 	lang?: string;
+	overrideTo?: string;
+	root?: string;
+	server: FastifyInstance;
+	slackOptions?: WebClientOptions;
+	slackToken: string;
+	templates: { [templateName: string]: Template<any> };
 }
 
 export async function nettleTea(opts: NettleTeaArgs) {
@@ -189,19 +145,13 @@ export async function nettleTea(opts: NettleTeaArgs) {
 				reply: FastifyReply,
 			) => {
 				try {
-					const rendered = template.fn(
-						request.body.payload ?? {},
-						t,
-						slackClient,
-					);
+					const rendered = template.fn(request.body.payload ?? {}, t, slackClient);
 					return rendered instanceof Promise ? await rendered : rendered;
 				} catch (error) {
 					console.error({ type: typeof error, error });
 
-					if (error instanceof NotFound)
-						reply.code(404).send({ error: error.message });
-					else if (error instanceof Error)
-						reply.code(500).send({ error: error.message });
+					if (error instanceof NotFound) reply.code(404).send({ error: error.message });
+					else if (error instanceof Error) reply.code(500).send({ error: error.message });
 					return;
 				}
 			},
@@ -229,9 +179,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
 							schema: Type.Object(
 								{
 									payload: Type.Ref(schemaId),
-									to_users: Type.Optional(
-										Type.Array(Type.String({ format: 'email' })),
-									),
+									to_users: Type.Optional(Type.Array(Type.String({ format: 'email' }))),
 									to_channels: Type.Optional(Type.Array(Type.String())),
 								},
 								{
