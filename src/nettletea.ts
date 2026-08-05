@@ -86,11 +86,10 @@ function mkViewHandler(template: Template<any>, t: TFunction, slackClient: WebCl
 			return;
 		}
 		rendered.text = undefined;
-		const location = `https://app.slack.com/block-kit-builder/T4LJR706L#${JSON.stringify(rendered)}`;
+		const location = `https://app.slack.com/block-kit-builder/T4LJR706L#${encodeURIComponent(JSON.stringify(rendered))}`;
 		// can't use location header dues to CORS
 		reply.code(303);
-		console.log({ mode: request.query });
-		if (request.query.mode !== 'body') reply.header('Location', encodeURI(location)).send();
+		if (request.query.mode !== 'body') reply.header('Location', location).send();
 		else reply.header('content-type', 'text/plain').send(location);
 	};
 }
