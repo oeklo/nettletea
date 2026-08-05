@@ -1,5 +1,8 @@
 node_modules
 
+# pnpm hardlinking fails in containers with volumes (devcontainer)
+/.pnpm-store/
+
 # Output
 /dist/
 
