@@ -1,4 +1,8 @@
-import type { WebAPIPlatformError, WebClient } from '@slack/web-api';
+import { ErrorCode, type WebAPIPlatformError, type WebClient } from '@slack/web-api';
+
+function isPlatformError(error: unknown): error is WebAPIPlatformError {
+	return error instanceof Error && 'code' in error && error.code === ErrorCode.PlatformError;
+}
 
 const channelCache: { [name: string]: string } = {};
 
@@ -8,6 +12,7 @@ export class NotFound extends Error {
 
 	constructor(value: string, type: string) {
 		super(`${type} ${value} not found`);
+		this.name = 'NotFound';
 		this.type = type;
 		this.value = value;
 	}
@@ -97,8 +102,7 @@ export async function getUserId(email: string, slack: WebClient): Promise<string
 	} catch (error) {
 		console.error(error);
 		if (error instanceof NotFound) throw error;
-		const slackError = error as WebAPIPlatformError;
-		if (slackError.data.error === 'users_not_found') throw new NotFound(email, 'user');
+		if (isPlatformError(error) && error.data.error === 'users_not_found') throw new NotFound(email, 'user');
 		throw error;
 	}
 }

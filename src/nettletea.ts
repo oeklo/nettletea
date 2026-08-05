@@ -33,6 +33,12 @@ async function renderTemplate<Data>(template: Template<Data>, data: Data | undef
 	return rendered_ instanceof Promise ? await rendered_ : rendered_;
 }
 
+function sendErrorReply(reply: FastifyReply, error: unknown) {
+	reply.log.error({ error }, 'template handler failed');
+	if (error instanceof NotFound) reply.code(404).send({ error: error.message });
+	else if (error instanceof Error) reply.code(500).send({ error: error.message });
+}
+
 async function resolveTargets({
 	overrideTo,
 	to_users,
@@ -49,7 +55,6 @@ async function resolveTargets({
 
 function mkSendHandler(template: Template<any>, t: TFunction, slackClient: WebClient, overrideTo?: string) {
 	return async (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) => {
-		console.log(JSON.stringify(request.body, null, 2));
 		try {
 			const rendered = await renderTemplate(template, request.body.payload, t, slackClient);
 			const targets = await resolveTargets({
@@ -65,10 +70,7 @@ function mkSendHandler(template: Template<any>, t: TFunction, slackClient: WebCl
 				} as ChatPostMessageArguments);
 			reply.code(204).send();
 		} catch (error) {
-			console.error({ type: typeof error, error });
-
-			if (error instanceof NotFound) reply.code(404).send({ error: error.message });
-			else if (error instanceof Error) reply.code(500).send({ error: error.message });
+			sendErrorReply(reply, error);
 			return;
 		}
 	};
@@ -80,10 +82,7 @@ function mkViewHandler(template: Template<any>, t: TFunction, slackClient: WebCl
 		try {
 			rendered = await renderTemplate(template, request.body.payload, t, slackClient);
 		} catch (error) {
-			console.error({ type: typeof error, error });
-
-			if (error instanceof NotFound) reply.code(404).send({ error: error.message });
-			else if (error instanceof Error) reply.code(500).send({ error: error.message });
+			sendErrorReply(reply, error);
 			return;
 		}
 		rendered.text = undefined;
@@ -148,10 +147,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
 					const rendered = template.fn(request.body.payload ?? {}, t, slackClient);
 					return rendered instanceof Promise ? await rendered : rendered;
 				} catch (error) {
-					console.error({ type: typeof error, error });
-
-					if (error instanceof NotFound) reply.code(404).send({ error: error.message });
-					else if (error instanceof Error) reply.code(500).send({ error: error.message });
+					sendErrorReply(reply, error);
 					return;
 				}
 			},

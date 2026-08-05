@@ -9,7 +9,6 @@ export default {
 	name: 'Current Time',
 	fn: ({ currentTime }: Data) => {
 		const text = `Now is ${new Date(Date.parse(currentTime)).toLocaleString('de')}!`;
-		console.log(text);
 		return {
 			blocks: [
 				{
