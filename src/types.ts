@@ -16,7 +16,7 @@ export interface Template<Data> {
 	fn: TemplateFunction<Data>;
 	name: string;
 	schema: TSchema;
-	translations: { [lang: string]: { [key: string]: any } };
+	translations?: { [lang: string]: { [key: string]: any } };
 }
 
 export type Templates<Data> = { [templateName: string]: Template<Data> };

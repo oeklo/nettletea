@@ -129,7 +129,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
 			...template.schema,
 		});
 
-		Object.entries(template.translations).map(([lang, translations]) =>
+		Object.entries(template.translations ?? {}).map(([lang, translations]) =>
 			i18n.addResourceBundle(lang, name, translations),
 		);
 
