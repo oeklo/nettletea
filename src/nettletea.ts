@@ -144,8 +144,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
 				reply: FastifyReply,
 			) => {
 				try {
-					const rendered = template.fn(request.body.payload ?? {}, t, slackClient);
-					return rendered instanceof Promise ? await rendered : rendered;
+					return await renderTemplate(template, request.body.payload as any, t, slackClient);
 				} catch (error) {
 					sendErrorReply(reply, error);
 					return;
