@@ -1,5 +1,5 @@
 import { Type } from '@fastify/type-provider-typebox';
-import type { Template } from '../index';
+import type { Template } from 'nettletea';
 
 export interface Data {
 	name: string;
