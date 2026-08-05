@@ -16,15 +16,18 @@ interface PreviewParams {
 	mode: 'header' | 'body';
 }
 
+type SendTarget = { user: string } | { channel: string };
+
 interface SendBody extends PayloadBody {
+	to?: SendTarget[];
 	to_users?: string[];
 	to_channels?: string[];
 }
 
 interface ResolveTargetArgs {
 	overrideTo?: string;
-	to_users?: string[];
-	to_channels?: string[];
+	to_users: string[];
+	to_channels: string[];
 	slackClient: WebClient;
 }
 
@@ -39,6 +42,16 @@ function sendErrorReply(reply: FastifyReply, error: unknown) {
 	else if (error instanceof Error) reply.code(500).send({ error: error.message });
 }
 
+function normalizeTargets(body: SendBody): { to_users: string[]; to_channels: string[] } {
+	const to_users = [...(body.to_users ?? [])];
+	const to_channels = [...(body.to_channels ?? [])];
+	for (const target of body.to ?? []) {
+		if ('user' in target) to_users.push(target.user);
+		else to_channels.push(target.channel);
+	}
+	return { to_users, to_channels };
+}
+
 async function resolveTargets({
 	overrideTo,
 	to_users,
@@ -48,8 +61,8 @@ async function resolveTargets({
 	if (overrideTo) {
 		return [await getUserId(overrideTo, slackClient)];
 	}
-	const users = await resolveUserIds(to_users ?? [], slackClient);
-	const channels = await resolveChannelIds(to_channels ?? [], slackClient);
+	const users = await resolveUserIds(to_users, slackClient);
+	const channels = await resolveChannelIds(to_channels, slackClient);
 	return [...users, ...channels];
 }
 
@@ -57,10 +70,13 @@ function mkSendHandler(template: Template<any>, t: TFunction, slackClient: WebCl
 	return async (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) => {
 		try {
 			const rendered = await renderTemplate(template, request.body.payload, t, slackClient);
+			if (request.body.to_users || request.body.to_channels) {
+				reply.log.warn('to_users/to_channels are deprecated; use `to` instead');
+			}
 			const targets = await resolveTargets({
 				overrideTo,
 				slackClient,
-				...request.body,
+				...normalizeTargets(request.body),
 			});
 
 			for (const channel of targets)
@@ -170,17 +186,34 @@ export async function nettleTea(opts: NettleTeaArgs) {
 					type: 'object',
 					content: {
 						'application/json': {
-							schema: Type.Object(
-								{
-									payload: Type.Ref(schemaId),
-									to_users: Type.Optional(Type.Array(Type.String({ format: 'email' }))),
-									to_channels: Type.Optional(Type.Array(Type.String())),
-								},
-								{
-									minProperties: 2,
-									additionalProperties: false,
-								},
-							),
+							schema: Type.Union([
+								Type.Object(
+									{
+										payload: Type.Ref(schemaId),
+										to: Type.Array(
+											Type.Union([
+												Type.Object({ user: Type.String({ format: 'email' }) }),
+												Type.Object({ channel: Type.String() }),
+											]),
+											{ minItems: 1 },
+										),
+									},
+									{
+										additionalProperties: false,
+									},
+								),
+								Type.Object(
+									{
+										payload: Type.Ref(schemaId),
+										to_users: Type.Optional(Type.Array(Type.String({ format: 'email' }))),
+										to_channels: Type.Optional(Type.Array(Type.String())),
+									},
+									{
+										minProperties: 2,
+										additionalProperties: false,
+									},
+								),
+							]),
 							examples: template.examples,
 						},
 					},

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Allow no template translations.
+- Added `to: ({ user: string } | { channel: string })[]` as the preferred way to address `/send` targets. `to_users`/`to_channels` are still accepted (deprecated) as a mutually-exclusive alternative body shape.
 
 ### Deprecated
 
