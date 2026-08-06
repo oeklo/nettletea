@@ -100,7 +100,6 @@ export async function getUserId(email: string, slack: WebClient): Promise<string
 		userCache[email] = userId;
 		return userId;
 	} catch (error) {
-		console.error(error);
 		if (error instanceof NotFound) throw error;
 		if (isPlatformError(error) && error.data.error === 'users_not_found') throw new NotFound(email, 'user');
 		throw error;

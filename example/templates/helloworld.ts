@@ -1,19 +1,23 @@
 import { Type } from '@fastify/type-provider-typebox';
-import type { Template } from 'nettletea';
+import type { Template } from '../../src/types.js';
 
 export interface Data {
 	name: string;
 }
 
 export default {
-	name: 'Hello World',
+	examples: {
+		default: {
+			name: 'World',
+		},
+	},
 	fn: ({ name }: Data) => {
 		return {
 			blocks: [
 				{
 					text: {
-						type: 'mrkdwn',
 						text: `hello ${name}`,
+						type: 'mrkdwn',
 					},
 					type: 'section',
 				},
@@ -21,11 +25,7 @@ export default {
 			text: `hello ${name}`,
 		};
 	},
-	examples: {
-		default: {
-			name: 'World',
-		},
-	},
+	name: 'Hello World',
 	schema: Type.Object({
 		name: Type.String(),
 	}),

@@ -5,8 +5,8 @@ import '@fastify/swagger';
 import slack, { type ChatPostMessageArguments, WebClient, type WebClientOptions } from '@slack/web-api';
 import i18next, { type TFunction } from 'i18next';
 
-import { getUserId, NotFound, resolveChannelIds, resolveUserIds } from './slack';
-import type { Message, Template } from './types';
+import { getUserId, NotFound, resolveChannelIds, resolveUserIds } from './slack.js';
+import type { Message, Template } from './types.js';
 
 interface PayloadBody {
 	payload: unknown;
@@ -66,8 +66,18 @@ async function resolveTargets({
 	return [...users, ...channels];
 }
 
-function mkSendHandler(template: Template<any>, t: TFunction, slackClient: WebClient, overrideTo?: string) {
+function mkSendHandler(
+	template: Template<any>,
+	t: TFunction,
+	slackClient: WebClient,
+	slackConfigured: boolean,
+	overrideTo?: string,
+) {
 	return async (request: FastifyRequest<{ Body: SendBody }>, reply: FastifyReply) => {
+		if (!slackConfigured) {
+			reply.code(503).send({ error: 'Slack sending is disabled: no Slack token configured' });
+			return;
+		}
 		try {
 			const rendered = await renderTemplate(template, request.body.payload, t, slackClient);
 			if (request.body.to_users || request.body.to_channels) {
@@ -113,14 +123,15 @@ function mkViewHandler(template: Template<any>, t: TFunction, slackClient: WebCl
 interface NettleTeaArgs {
 	lang?: string;
 	overrideTo?: string;
-	root?: string;
+	root: string;
 	server: FastifyInstance;
 	slackOptions?: WebClientOptions;
-	slackToken: string;
+	slackToken?: string;
 	templates: { [templateName: string]: Template<any> };
 }
 
 export async function nettleTea(opts: NettleTeaArgs) {
+	const slackConfigured = Boolean(opts.slackToken);
 	const slackClient = new WebClient(
 		opts.slackToken,
 		opts.slackOptions ?? {
@@ -128,7 +139,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
 		},
 	);
 
-	const root_ = path.join(opts.root ?? '/', '/t');
+	const root_ = path.join(opts.root, '/t');
 
 	const i18n = i18next.createInstance();
 	await i18n.init({
@@ -174,7 +185,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
 		});
 
 		const url = path.join(root_, `${name}/send`);
-		const handler = mkSendHandler(template, t, slackClient, opts.overrideTo);
+		const handler = mkSendHandler(template, t, slackClient, slackConfigured, opts.overrideTo);
 		opts.server.route({
 			method: 'POST',
 			url,
@@ -222,6 +233,13 @@ export async function nettleTea(opts: NettleTeaArgs) {
 					'204': {
 						description: 'Successful response',
 						type: 'null',
+					},
+					'503': {
+						description: 'Slack sending is disabled because no Slack token is configured',
+						properties: {
+							error: { type: 'string' },
+						},
+						type: 'object',
 					},
 				},
 			},

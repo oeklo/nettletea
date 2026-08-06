@@ -1,3 +1,2 @@
-export { nettleTea } from './nettletea';
-export { resolveUserIds } from './slack';
-export type { Message, Template, Templates } from './types';
+export { resolveUserIds } from './slack.js';
+export type { Message, Template, TemplateFunction, Templates } from './types.js';
