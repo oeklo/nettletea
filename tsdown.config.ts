@@ -1,13 +1,13 @@
-import { defineConfig } from 'tsdown';
+import {defineConfig} from 'tsdown';
 
 export default defineConfig({
-	entry: ['src/index.ts', 'src/cli.ts'],
-	format: ['esm'],
-	platform: 'node',
-	target: 'es2024',
-	fixedExtension: false,
-	sourcemap: true,
-	dts: true,
-	clean: true,
-	minify: process.env.NODE_ENV === 'production',
+    clean: true,
+    dts: true,
+    entry: ['src/index.ts', 'src/cli.ts'],
+    fixedExtension: false,
+    format: ['esm'],
+    minify: process.env.NODE_ENV === 'production',
+    platform: 'node',
+    sourcemap: true,
+    target: 'es2024',
 });

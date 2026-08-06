@@ -1,21 +1,21 @@
-import { ErrorCode, type WebAPIPlatformError, type WebClient } from '@slack/web-api';
+import {ErrorCode, type WebAPIPlatformError, type WebClient} from '@slack/web-api';
 
 function isPlatformError(error: unknown): error is WebAPIPlatformError {
-	return error instanceof Error && 'code' in error && error.code === ErrorCode.PlatformError;
+    return error instanceof Error && 'code' in error && error.code === ErrorCode.PlatformError;
 }
 
-const channelCache: { [name: string]: string } = {};
+const channelCache: {[name: string]: string} = {};
 
 export class NotFound extends Error {
-	type: string;
-	value: string;
+    type: string;
+    value: string;
 
-	constructor(value: string, type: string) {
-		super(`${type} ${value} not found`);
-		this.name = 'NotFound';
-		this.type = type;
-		this.value = value;
-	}
+    constructor(value: string, type: string) {
+        super(`${type} ${value} not found`);
+        this.name = 'NotFound';
+        this.type = type;
+        this.value = value;
+    }
 }
 
 const MAX_CHANNELS_LIST = 1000;
@@ -29,83 +29,83 @@ const MAX_CHANNELS_LIST = 1000;
  * @returns A Map where keys are channel names and values are channel IDs
  */
 export const resolveChannelIds = async (channelNames: string[], slack: WebClient): Promise<string[]> => {
-	const resolvedChannels = new Map<string, string>();
+    const resolvedChannels = new Map<string, string>();
 
-	const namesToFetch: string[] = [];
+    const namesToFetch: string[] = [];
 
-	for (const name of channelNames) {
-		if (channelCache[name]) {
-			resolvedChannels.set(name, channelCache[name]);
-		} else {
-			namesToFetch.push(name);
-		}
-	}
+    for (const name of channelNames) {
+        if (channelCache[name]) {
+            resolvedChannels.set(name, channelCache[name]);
+        } else {
+            namesToFetch.push(name);
+        }
+    }
 
-	let cursor: string | undefined;
-	while (namesToFetch.length > 0) {
-		const response = await slack.conversations.list({
-			exclude_archived: true,
-			limit: MAX_CHANNELS_LIST,
-			types: 'public_channel,private_channel',
-			cursor: cursor,
-		});
+    let cursor: string | undefined;
+    while (namesToFetch.length > 0) {
+        const response = await slack.conversations.list({
+            cursor: cursor,
+            exclude_archived: true,
+            limit: MAX_CHANNELS_LIST,
+            types: 'public_channel,private_channel',
+        });
 
-		if (response.channels) {
-			for (const channel of response.channels) {
-				if (channel.name && channel.id) {
-					channelCache[channel.name] = channel.id;
+        if (response.channels) {
+            for (const channel of response.channels) {
+                if (channel.name && channel.id) {
+                    channelCache[channel.name] = channel.id;
 
-					// If the channel is one of the names we're looking for, add to resolved
-					if (namesToFetch.includes(channel.name)) {
-						resolvedChannels.set(channel.name, channel.id);
+                    // If the channel is one of the names we're looking for, add to resolved
+                    if (namesToFetch.includes(channel.name)) {
+                        resolvedChannels.set(channel.name, channel.id);
 
-						// Remove the found name from namesToFetch
-						const index = namesToFetch.indexOf(channel.name);
-						if (index > -1) {
-							namesToFetch.splice(index, 1);
-						}
-					}
-				}
-			}
-		}
+                        // Remove the found name from namesToFetch
+                        const index = namesToFetch.indexOf(channel.name);
+                        if (index > -1) {
+                            namesToFetch.splice(index, 1);
+                        }
+                    }
+                }
+            }
+        }
 
-		if (response.response_metadata?.next_cursor) {
-			cursor = response.response_metadata.next_cursor;
-		} else {
-			break;
-		}
-	}
+        if (response.response_metadata?.next_cursor) {
+            cursor = response.response_metadata.next_cursor;
+        } else {
+            break;
+        }
+    }
 
-	// At this point, some channel names might not have been found
-	// You can choose to handle them as needed (e.g., throw an error or skip)
-	for (const name of channelNames) {
-		if (!resolvedChannels.has(name)) {
-			throw new NotFound(name, 'channel');
-		}
-	}
+    // At this point, some channel names might not have been found
+    // You can choose to handle them as needed (e.g., throw an error or skip)
+    for (const name of channelNames) {
+        if (!resolvedChannels.has(name)) {
+            throw new NotFound(name, 'channel');
+        }
+    }
 
-	return [...resolvedChannels.values()];
+    return [...resolvedChannels.values()];
 };
 
-const userCache: { [email: string]: string } = {};
+const userCache: {[email: string]: string} = {};
 
 export async function getUserId(email: string, slack: WebClient): Promise<string> {
-	if (email in userCache) return userCache[email];
+    if (email in userCache) return userCache[email];
 
-	try {
-		const user = await slack.users.lookupByEmail({ email });
-		if (!user.ok) throw new NotFound(email, 'user');
+    try {
+        const user = await slack.users.lookupByEmail({email});
+        if (!user.ok) throw new NotFound(email, 'user');
 
-		const userId = user.user!.id!;
-		userCache[email] = userId;
-		return userId;
-	} catch (error) {
-		if (error instanceof NotFound) throw error;
-		if (isPlatformError(error) && error.data.error === 'users_not_found') throw new NotFound(email, 'user');
-		throw error;
-	}
+        const userId = user.user!.id!;
+        userCache[email] = userId;
+        return userId;
+    } catch (error) {
+        if (error instanceof NotFound) throw error;
+        if (isPlatformError(error) && error.data.error === 'users_not_found') throw new NotFound(email, 'user');
+        throw error;
+    }
 }
 
 export async function resolveUserIds(emails: string[], slack: WebClient): Promise<string[]> {
-	return Promise.all(emails.map(async (email) => await getUserId(email, slack)));
+    return Promise.all(emails.map(async email => await getUserId(email, slack)));
 }
