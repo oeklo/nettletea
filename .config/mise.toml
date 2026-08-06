@@ -1,7 +1,7 @@
 [tools]
 node = "24"
 pnpm = "11"
-"npm:@biomejs/biome" = "2.5.1"
+"npm:@biomejs/biome" = "2.5.7"
 
 [tasks]
 format = 'biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --unsafe '
