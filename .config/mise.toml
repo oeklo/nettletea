@@ -1,5 +1,5 @@
 [tools]
-node = "24"
+node = "26"
 pnpm = "11"
 "npm:@biomejs/biome" = "2.5.7"
 
