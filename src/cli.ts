@@ -74,6 +74,7 @@ async function main() {
 async function parseArgs() {
     return yargs(hideBin(process.argv))
         .scriptName('nettletea')
+        .parserConfiguration({'duplicate-arguments-array': false})
         .options({
             host: {
                 default: '::',
