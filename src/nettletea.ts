@@ -41,11 +41,12 @@ async function renderTemplate<Data>(
     return rendered_ instanceof Promise ? await rendered_ : rendered_;
 }
 
-function sendErrorReply(reply: FastifyReply, error: unknown) {
+async function sendErrorReply(reply: FastifyReply, error: unknown) {
     reply.log.error({error}, 'template handler failed');
-    if (error instanceof NotFound) reply.code(404).send({error: error.name, message: error.message});
-    else if (error instanceof SlackNotConfigured) reply.code(503).send({error: error.name, message: error.message});
-    else if (error instanceof Error) reply.code(500).send({error: error.name, message: error.message});
+    if (error instanceof NotFound) await reply.code(404).send({error: error.name, message: error.message});
+    else if (error instanceof SlackNotConfigured)
+        await reply.code(503).send({error: error.name, message: error.message});
+    else if (error instanceof Error) await reply.code(500).send({error: error.name, message: error.message});
     else throw error;
 }
 
@@ -78,7 +79,7 @@ function mkSendHandler(
 ) {
     return async (request: FastifyRequest<{Body: SendBody}>, reply: FastifyReply) => {
         if (!slackConfigured) {
-            reply.code(503).send({error: 'Slack sending is disabled: no Slack token configured'});
+            await reply.code(503).send({error: 'Slack sending is disabled: no Slack token configured'});
             return;
         }
         try {
@@ -99,7 +100,7 @@ function mkSendHandler(
                 } as ChatPostMessageArguments);
             await reply.code(204).send();
         } catch (error) {
-            sendErrorReply(reply, error);
+            await sendErrorReply(reply, error);
             return;
         }
     };
@@ -111,15 +112,15 @@ function mkViewHandler(template: Template<any>, t: TFunction, resolvers: Resolve
         try {
             rendered = await renderTemplate(template, request.body.payload, t, resolvers);
         } catch (error) {
-            sendErrorReply(reply, error);
+            await sendErrorReply(reply, error);
             return;
         }
         rendered.text = undefined;
         const location = `https://app.slack.com/block-kit-builder/T4LJR706L#${encodeURIComponent(JSON.stringify(rendered))}`;
         // can't use location header dues to CORS
         reply.code(303);
-        if (request.query.mode !== 'body') reply.header('Location', location).send();
-        else reply.header('content-type', 'text/plain').send(location);
+        if (request.query.mode !== 'body') await reply.header('Location', location).send();
+        else await reply.header('content-type', 'text/plain').send(location);
     };
 }
 
@@ -175,7 +176,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
                 try {
                     return await renderTemplate(template, request.body.payload as any, t, resolvers);
                 } catch (error) {
-                    sendErrorReply(reply, error);
+                    await sendErrorReply(reply, error);
                     return;
                 }
             },
