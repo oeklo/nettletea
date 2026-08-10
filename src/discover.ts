@@ -3,7 +3,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import type {Template, Templates} from './types.js';
 
-const TEMPLATE_EXTENSIONS = ['.ts', '.js'];
+const TEMPLATE_EXTENSIONS = ['.ts', '.js', '.mjs'];
 
 export async function discoverTemplates(dir: string): Promise<Templates<any>> {
     const entries = await readdir(dir, {withFileTypes: true});
