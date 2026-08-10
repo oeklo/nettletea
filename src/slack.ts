@@ -1,4 +1,4 @@
-import {ErrorCode, type WebAPIPlatformError, type WebClient} from '@slack/web-api';
+import {ErrorCode, type UsersLookupByEmailResponse, type WebAPIPlatformError, type WebClient} from '@slack/web-api';
 import type {Resolvers} from './types.js';
 
 function isPlatformError(error: unknown): error is WebAPIPlatformError {
@@ -100,7 +100,7 @@ const userCache: {[email: string]: string} = {};
 export async function getUserId(email: string, slack: WebClient): Promise<string> {
     if (email in userCache) return userCache[email];
 
-    let user;
+    let user: UsersLookupByEmailResponse;
     try {
         user = await slack.users.lookupByEmail({email});
     } catch (error) {
