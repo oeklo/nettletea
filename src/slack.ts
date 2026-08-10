@@ -100,18 +100,18 @@ const userCache: {[email: string]: string} = {};
 export async function getUserId(email: string, slack: WebClient): Promise<string> {
     if (email in userCache) return userCache[email];
 
+    let user;
     try {
-        const user = await slack.users.lookupByEmail({email});
-        if (!user.ok) throw new NotFound(email, 'user');
-
-        const userId = user.user!.id!;
-        userCache[email] = userId;
-        return userId;
+        user = await slack.users.lookupByEmail({email});
     } catch (error) {
-        if (error instanceof NotFound) throw error;
         if (isPlatformError(error) && error.data.error === 'users_not_found') throw new NotFound(email, 'user');
         throw error;
     }
+    if (!user.ok) throw new NotFound(email, 'user');
+
+    const userId = user.user!.id!;
+    userCache[email] = userId;
+    return userId;
 }
 
 export async function resolveUserIds(emails: string[], slack: WebClient): Promise<string[]> {
