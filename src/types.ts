@@ -1,6 +1,5 @@
 import type {TSchema} from '@fastify/type-provider-typebox';
 import type {Block, KnownBlock} from '@slack/types';
-import type {WebClient} from '@slack/web-api';
 import type {TFunction} from 'i18next';
 
 export interface Message {
@@ -9,7 +8,12 @@ export interface Message {
     blocks: (KnownBlock | Block)[];
 }
 
-export type TemplateFunction<Data> = (data: Data, t: TFunction, slack: WebClient) => Message | Promise<Message>;
+export interface Resolvers {
+    resolveChannelIds(channelNames: string[]): Promise<string[]>;
+    resolveUserIds(emails: string[]): Promise<string[]>;
+}
+
+export type TemplateFunction<Data> = (data: Data, t: TFunction, resolvers: Resolvers) => Message | Promise<Message>;
 
 export interface Template<Data> {
     examples: {[name: string]: Data};

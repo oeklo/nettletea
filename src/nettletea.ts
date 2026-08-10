@@ -5,8 +5,8 @@ import '@fastify/swagger';
 import slack, {type ChatPostMessageArguments, WebClient, type WebClientOptions} from '@slack/web-api';
 import i18next, {type TFunction} from 'i18next';
 
-import {getUserId, NotFound, resolveChannelIds, resolveUserIds} from './slack.js';
-import type {Message, Template} from './types.js';
+import {createResolvers, getUserId, NotFound, resolveChannelIds, resolveUserIds, SlackNotConfigured} from './slack.js';
+import type {Message, Resolvers, Template} from './types.js';
 
 interface PayloadBody {
     payload: unknown;
@@ -31,14 +31,20 @@ interface ResolveTargetArgs {
     slackClient: WebClient;
 }
 
-async function renderTemplate<Data>(template: Template<Data>, data: Data | undefined, t: TFunction, slack: WebClient) {
-    const rendered_ = template.fn(data ?? ({} as unknown as Data), t, slack);
+async function renderTemplate<Data>(
+    template: Template<Data>,
+    data: Data | undefined,
+    t: TFunction,
+    resolvers: Resolvers,
+) {
+    const rendered_ = template.fn(data ?? ({} as unknown as Data), t, resolvers);
     return rendered_ instanceof Promise ? await rendered_ : rendered_;
 }
 
 function sendErrorReply(reply: FastifyReply, error: unknown) {
     reply.log.error({error}, 'template handler failed');
     if (error instanceof NotFound) reply.code(404).send({error: error.message});
+    else if (error instanceof SlackNotConfigured) reply.code(503).send({error: error.message});
     else if (error instanceof Error) reply.code(500).send({error: error.message});
 }
 
@@ -65,6 +71,7 @@ function mkSendHandler(
     template: Template<any>,
     t: TFunction,
     slackClient: WebClient,
+    resolvers: Resolvers,
     slackConfigured: boolean,
     overrideTo?: string,
 ) {
@@ -74,7 +81,7 @@ function mkSendHandler(
             return;
         }
         try {
-            const rendered = await renderTemplate(template, request.body.payload, t, slackClient);
+            const rendered = await renderTemplate(template, request.body.payload, t, resolvers);
             if (request.body.to_users || request.body.to_channels) {
                 reply.log.warn('to_users/to_channels are deprecated; use `to` instead');
             }
@@ -97,11 +104,11 @@ function mkSendHandler(
     };
 }
 
-function mkViewHandler(template: Template<any>, t: TFunction, slackClient: WebClient) {
+function mkViewHandler(template: Template<any>, t: TFunction, resolvers: Resolvers) {
     return async (request: FastifyRequest<{Body: PayloadBody; Querystring: PreviewParams}>, reply: FastifyReply) => {
         let rendered: Message;
         try {
-            rendered = await renderTemplate(template, request.body.payload, t, slackClient);
+            rendered = await renderTemplate(template, request.body.payload, t, resolvers);
         } catch (error) {
             sendErrorReply(reply, error);
             return;
@@ -134,6 +141,8 @@ export async function nettleTea(opts: NettleTeaArgs) {
         },
     );
 
+    const resolvers = createResolvers(slackClient, slackConfigured);
+
     const root_ = path.join(opts.root, '/t');
 
     const i18n = i18next.createInstance();
@@ -163,7 +172,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
                 reply: FastifyReply,
             ) => {
                 try {
-                    return await renderTemplate(template, request.body.payload as any, t, slackClient);
+                    return await renderTemplate(template, request.body.payload as any, t, resolvers);
                 } catch (error) {
                     sendErrorReply(reply, error);
                     return;
@@ -180,7 +189,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
         });
 
         const url = path.join(root_, `${name}/send`);
-        const handler = mkSendHandler(template, t, slackClient, slackConfigured, opts.overrideTo);
+        const handler = mkSendHandler(template, t, slackClient, resolvers, slackConfigured, opts.overrideTo);
         opts.server.route({
             handler,
             method: 'POST',
@@ -241,7 +250,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
         });
 
         opts.server.route({
-            handler: mkViewHandler(template, t, slackClient),
+            handler: mkViewHandler(template, t, resolvers),
             method: 'POST',
 
             schema: {

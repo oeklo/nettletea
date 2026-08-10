@@ -34,6 +34,16 @@ const testTemplate: Template<{name: string}> = {
     schema: Type.Object({name: Type.String()}),
 };
 
+const resolvingTemplate: Template<{email: string}> = {
+    examples: {default: {email: 'a@b.com'}},
+    fn: async ({email}, _t, {resolveUserIds}) => {
+        const [id] = await resolveUserIds([email]);
+        return {blocks: [], text: id};
+    },
+    name: 'Resolving',
+    schema: Type.Object({email: Type.String()}),
+};
+
 const defaultOpts = {
     root: '/',
     slackOptions: {},
@@ -179,6 +189,21 @@ describe('nettleTea routes', () => {
             expect(res.json()).toMatchObject({error: expect.stringContaining('no Slack token')});
             expect(mocks.lookupByEmail).not.toHaveBeenCalled();
             expect(mocks.postMessage).not.toHaveBeenCalled();
+        });
+
+        it('POST /t/<name> returns 503 if the template itself calls a resolver', async () => {
+            const server = Fastify();
+            await nettleTea({...defaultOpts, server, slackToken: undefined, templates: {resolving: resolvingTemplate}});
+
+            const res = await server.inject({
+                method: 'POST',
+                payload: {payload: {email: 'a@b.com'}},
+                url: '/t/resolving',
+            });
+
+            expect(res.statusCode).toBe(503);
+            expect(res.json()).toMatchObject({error: expect.stringContaining('no Slack token')});
+            expect(mocks.lookupByEmail).not.toHaveBeenCalled();
         });
     });
 });

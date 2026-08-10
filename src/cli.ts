@@ -35,9 +35,7 @@ async function main() {
 
     const slackToken = process.env.SLACK_TOKEN;
     if (!slackToken) {
-        console.warn(
-            'No SLACK_TOKEN set: render and preview routes will work, but /send routes will respond 503 Service Unavailable.',
-        );
+        console.warn('No SLACK_TOKEN set.');
     }
 
     const templatesDir = path.resolve(process.cwd(), argv.templates);

@@ -1,4 +1,5 @@
 import {ErrorCode, type WebAPIPlatformError, type WebClient} from '@slack/web-api';
+import type {Resolvers} from './types.js';
 
 function isPlatformError(error: unknown): error is WebAPIPlatformError {
     return error instanceof Error && 'code' in error && error.code === ErrorCode.PlatformError;
@@ -15,6 +16,13 @@ export class NotFound extends Error {
         this.name = 'NotFound';
         this.type = type;
         this.value = value;
+    }
+}
+
+export class SlackNotConfigured extends Error {
+    constructor() {
+        super('Slack sending is disabled: no Slack token configured');
+        this.name = 'SlackNotConfigured';
     }
 }
 
@@ -108,4 +116,17 @@ export async function getUserId(email: string, slack: WebClient): Promise<string
 
 export async function resolveUserIds(emails: string[], slack: WebClient): Promise<string[]> {
     return Promise.all(emails.map(async email => await getUserId(email, slack)));
+}
+
+export function createResolvers(slack: WebClient, configured: boolean): Resolvers {
+    if (!configured) {
+        const notConfigured = (): never => {
+            throw new SlackNotConfigured();
+        };
+        return {resolveChannelIds: notConfigured, resolveUserIds: notConfigured};
+    }
+    return {
+        resolveChannelIds: channelNames => resolveChannelIds(channelNames, slack),
+        resolveUserIds: emails => resolveUserIds(emails, slack),
+    };
 }
