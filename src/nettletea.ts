@@ -43,9 +43,10 @@ async function renderTemplate<Data>(
 
 function sendErrorReply(reply: FastifyReply, error: unknown) {
     reply.log.error({error}, 'template handler failed');
-    if (error instanceof NotFound) reply.code(404).send({error: error.message});
-    else if (error instanceof SlackNotConfigured) reply.code(503).send({error: error.message});
-    else if (error instanceof Error) reply.code(500).send({error: error.message});
+    if (error instanceof NotFound) reply.code(404).send({error: error.name, message: error.message});
+    else if (error instanceof SlackNotConfigured) reply.code(503).send({error: error.name, message: error.message});
+    else if (error instanceof Error) reply.code(500).send({error: error.name, message: error.message});
+    else throw error;
 }
 
 function normalizeTargets(body: SendBody): {to_users: string[]; to_channels: string[]} {
@@ -96,7 +97,7 @@ function mkSendHandler(
                     channel,
                     ...rendered,
                 } as ChatPostMessageArguments);
-            reply.code(204).send();
+            await reply.code(204).send();
         } catch (error) {
             sendErrorReply(reply, error);
             return;
@@ -241,6 +242,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
                         description: 'Slack sending is disabled because no Slack token is configured',
                         properties: {
                             error: {type: 'string'},
+                            message: {type: 'string'},
                         },
                         type: 'object',
                     },
