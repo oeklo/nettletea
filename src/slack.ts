@@ -84,15 +84,11 @@ export const resolveChannelIds = async (channelNames: string[], slack: WebClient
         }
     }
 
-    // At this point, some channel names might not have been found
-    // You can choose to handle them as needed (e.g., throw an error or skip)
-    for (const name of channelNames) {
-        if (!resolvedChannels.has(name)) {
-            throw new NotFound(name, 'channel');
-        }
-    }
-
-    return [...resolvedChannels.values()];
+    return channelNames.map(name => {
+        const id = resolvedChannels.get(name);
+        if (!id) throw new NotFound(name, 'channel');
+        return id;
+    });
 };
 
 const userCache: {[email: string]: string} = {};
