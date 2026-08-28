@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Nettle Tea now runs as a standalone CLI.
+- `--bcc-channel`/`BCC_CHANNEL` to send a copy of every `/send` to a fixed channel, in addition to the real recipients.
 
 ### Changed
 

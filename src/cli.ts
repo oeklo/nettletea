@@ -49,6 +49,7 @@ async function main() {
     const templates = await discoverTemplates(templatesDir);
 
     await nettleTea({
+        bccChannel: argv.bccChannel,
         lang: argv.lang,
         overrideTo: argv.overrideTo,
         root: argv.root,
@@ -76,6 +77,10 @@ async function parseArgs() {
         .scriptName('nettletea')
         .parserConfiguration({'duplicate-arguments-array': false})
         .options({
+            'bcc-channel': {
+                describe: 'Send a copy of every send to this channel (name, not ID)',
+                type: 'string',
+            },
             host: {
                 default: '::',
                 describe: 'Host to bind to',

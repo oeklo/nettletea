@@ -89,14 +89,12 @@ describe('nettleTea routes', () => {
     });
 
     it('overrideTo forces every send to the override target, ignoring the requested `to`', async () => {
-        mocks.lookupByEmail.mockImplementation(async ({email}: {email: string}) =>
-            email === 'staging@x.com' ? {ok: true, user: {id: 'USTAGING'}} : {ok: true, user: {id: 'UREAL'}},
-        );
+        mocks.lookupByEmail.mockResolvedValue({ok: true, user: {id: 'USTAGING'}});
 
         const server = Fastify();
         await nettleTea({
             ...defaultOpts,
-            overrideTo: 'staging@x.com',
+            overrideTo: 'staging@example.com',
             server,
             templates: {test: testTemplate},
         });
@@ -110,6 +108,67 @@ describe('nettleTea routes', () => {
         expect(res.statusCode).toBe(204);
         expect(mocks.postMessage).toHaveBeenCalledTimes(1);
         expect(mocks.postMessage).toHaveBeenCalledWith(expect.objectContaining({channel: 'USTAGING'}));
+    });
+
+    describe('bccChannel', () => {
+        it('sends a copy to the configured bcc channel alongside the real recipient', async () => {
+            mocks.lookupByEmail.mockResolvedValue({ok: true, user: {id: 'U123'}});
+            mocks.conversationsList.mockResolvedValue({channels: [{id: 'CAUDIT', name: 'audit-log'}]});
+
+            const server = Fastify();
+            await nettleTea({...defaultOpts, bccChannel: 'audit-log', server, templates: {test: testTemplate}});
+
+            const res = await server.inject({
+                method: 'POST',
+                payload: {payload: {name: 'World'}, to: [{user: 'a@b.com'}]},
+                url: '/t/test/send',
+            });
+
+            expect(res.statusCode).toBe(204);
+            expect(mocks.postMessage).toHaveBeenCalledTimes(2);
+            expect(mocks.postMessage).toHaveBeenCalledWith(expect.objectContaining({channel: 'U123'}));
+            expect(mocks.postMessage).toHaveBeenCalledWith(expect.objectContaining({channel: 'CAUDIT'}));
+        });
+
+        it('is suppressed when overrideTo is active', async () => {
+            mocks.lookupByEmail.mockResolvedValue({ok: true, user: {id: 'USTAGING'}});
+
+            const server = Fastify();
+            await nettleTea({
+                ...defaultOpts,
+                bccChannel: 'audit-log',
+                overrideTo: 'staging@example.com',
+                server,
+                templates: {test: testTemplate},
+            });
+
+            const res = await server.inject({
+                method: 'POST',
+                payload: {payload: {name: 'World'}, to: [{user: 'a@b.com'}]},
+                url: '/t/test/send',
+            });
+
+            expect(res.statusCode).toBe(204);
+            expect(mocks.postMessage).toHaveBeenCalledTimes(1);
+            expect(mocks.postMessage).toHaveBeenCalledWith(expect.objectContaining({channel: 'USTAGING'}));
+        });
+
+        it('returns 404 when the bcc channel cannot be resolved, without sending to anyone', async () => {
+            mocks.lookupByEmail.mockResolvedValue({ok: true, user: {id: 'U123'}});
+            mocks.conversationsList.mockResolvedValue({channels: []});
+
+            const server = Fastify();
+            await nettleTea({...defaultOpts, bccChannel: 'missing-channel', server, templates: {test: testTemplate}});
+
+            const res = await server.inject({
+                method: 'POST',
+                payload: {payload: {name: 'World'}, to: [{user: 'a@b.com'}]},
+                url: '/t/test/send',
+            });
+
+            expect(res.statusCode).toBe(404);
+            expect(mocks.postMessage).not.toHaveBeenCalled();
+        });
     });
 
     it('POST /t/<name>/preview?mode=header redirects to a Block Kit Builder URL', async () => {
@@ -153,7 +212,7 @@ describe('nettleTea routes', () => {
 
         const res = await server.inject({
             method: 'POST',
-            payload: {payload: {name: 'World'}, to: [{user: 'missing@x.com'}]},
+            payload: {payload: {name: 'World'}, to: [{user: 'missing@example.com'}]},
             url: '/t/test/send',
         });
 
@@ -162,7 +221,7 @@ describe('nettleTea routes', () => {
 
     it('POST /t/<name>/send returns 502 with per-recipient failures, still attempting every target', async () => {
         mocks.lookupByEmail.mockImplementation(async ({email}: {email: string}) =>
-            email === 'good@x.com' ? {ok: true, user: {id: 'UGOOD'}} : {ok: true, user: {id: 'UBAD'}},
+            email === 'good@example.com' ? {ok: true, user: {id: 'UGOOD'}} : {ok: true, user: {id: 'UBAD'}},
         );
         mocks.postMessage.mockImplementation(async ({channel}: {channel: string}) => {
             if (channel === 'UBAD') throw new Error('user_is_restricted');
@@ -174,14 +233,14 @@ describe('nettleTea routes', () => {
 
         const res = await server.inject({
             method: 'POST',
-            payload: {payload: {name: 'World'}, to: [{user: 'good@x.com'}, {user: 'bad@x.com'}]},
+            payload: {payload: {name: 'World'}, to: [{user: 'good@example.com'}, {user: 'bad@example.com'}]},
             url: '/t/test/send',
         });
 
         expect(res.statusCode).toBe(502);
         expect(mocks.postMessage).toHaveBeenCalledTimes(2);
         expect(res.json()).toMatchObject({
-            failed: [{error: 'user_is_restricted', recipient: 'bad@x.com'}],
+            failed: [{error: 'user_is_restricted', recipient: 'bad@example.com'}],
         });
     });
 

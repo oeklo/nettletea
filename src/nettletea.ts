@@ -89,6 +89,7 @@ function mkSendHandler(
     resolvers: Resolvers,
     slackConfigured: boolean,
     overrideTo?: string,
+    bccChannel?: string,
 ) {
     return async (request: FastifyRequest<{Body: SendBody}>, reply: FastifyReply) => {
         if (!slackConfigured) {
@@ -100,10 +101,13 @@ function mkSendHandler(
             if (request.body.to_users || request.body.to_channels) {
                 reply.log.warn('to_users/to_channels are deprecated; use `to` instead');
             }
+            const {to_channels, to_users} = normalizeTargets(request.body);
+            if (bccChannel) to_channels.push(bccChannel);
             const targets = await resolveTargets({
                 overrideTo,
                 slackClient,
-                ...normalizeTargets(request.body),
+                to_channels,
+                to_users,
             });
 
             const results = await Promise.allSettled(
@@ -159,6 +163,7 @@ function mkViewHandler(template: Template<any>, t: TFunction, resolvers: Resolve
 }
 
 interface NettleTeaArgs {
+    bccChannel?: string;
     lang?: string;
     overrideTo?: string;
     root: string;
@@ -225,7 +230,15 @@ export async function nettleTea(opts: NettleTeaArgs) {
         });
 
         const url = path.join(root_, `${name}/send`);
-        const handler = mkSendHandler(template, t, slackClient, resolvers, slackConfigured, opts.overrideTo);
+        const handler = mkSendHandler(
+            template,
+            t,
+            slackClient,
+            resolvers,
+            slackConfigured,
+            opts.overrideTo,
+            opts.bccChannel,
+        );
         opts.server.route({
             handler,
             method: 'POST',
