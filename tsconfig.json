@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
         "declaration": true,
-        "declarationDir": "dist/types",
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "module": "NodeNext",

@@ -8,22 +8,22 @@
     },
     "dependencies": {
         "@fastify/swagger": "^9",
-        "@fastify/swagger-ui": "^5",
-        "@fastify/type-provider-typebox": "^5",
-        "@sinclair/typebox": "^0.34.28",
-        "@slack/web-api": "^7",
-        "fastify": "^5.2.1",
+        "@fastify/swagger-ui": "^6",
+        "@fastify/type-provider-typebox": "^6",
+        "@sinclair/typebox": "^0.34.52",
+        "@slack/web-api": "^8",
+        "fastify": "^5",
         "i18next": "^24",
-        "yargs": "^17.7.2"
+        "yargs": "^17"
     },
     "devDependencies": {
-        "@slack/types": "^2.14.0",
-        "@types/node": "^22.13.9",
-        "@types/yargs": "^17.0.33",
+        "@slack/types": "^3",
+        "@types/node": "^26",
+        "@types/yargs": "^17",
         "tsdown": "^0.22.14",
-        "tsx": "^4.19.2",
-        "typescript": "^5.8.2",
-        "vitest": "^3.2.4"
+        "tsx": "^4",
+        "typescript": "^7",
+        "vitest": "^4"
     },
     "files": [
         "dist"
