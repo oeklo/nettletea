@@ -160,6 +160,31 @@ describe('nettleTea routes', () => {
         expect(res.statusCode).toBe(404);
     });
 
+    it('POST /t/<name>/send returns 502 with per-recipient failures, still attempting every target', async () => {
+        mocks.lookupByEmail.mockImplementation(async ({email}: {email: string}) =>
+            email === 'good@x.com' ? {ok: true, user: {id: 'UGOOD'}} : {ok: true, user: {id: 'UBAD'}},
+        );
+        mocks.postMessage.mockImplementation(async ({channel}: {channel: string}) => {
+            if (channel === 'UBAD') throw new Error('user_is_restricted');
+            return {ok: true};
+        });
+
+        const server = Fastify();
+        await nettleTea({...defaultOpts, server, templates: {test: testTemplate}});
+
+        const res = await server.inject({
+            method: 'POST',
+            payload: {payload: {name: 'World'}, to: [{user: 'good@x.com'}, {user: 'bad@x.com'}]},
+            url: '/t/test/send',
+        });
+
+        expect(res.statusCode).toBe(502);
+        expect(mocks.postMessage).toHaveBeenCalledTimes(2);
+        expect(res.json()).toMatchObject({
+            failed: [{error: 'user_is_restricted', recipient: 'bad@x.com'}],
+        });
+    });
+
     describe('without a Slack token configured', () => {
         it('POST /t/<name> still renders', async () => {
             const server = Fastify();
@@ -202,7 +227,10 @@ describe('nettleTea routes', () => {
             });
 
             expect(res.statusCode).toBe(503);
-            expect(res.json()).toMatchObject({error: expect.stringContaining('no Slack token')});
+            expect(res.json()).toMatchObject({
+                error: 'SlackNotConfigured',
+                message: expect.stringContaining('no Slack token'),
+            });
             expect(mocks.lookupByEmail).not.toHaveBeenCalled();
         });
     });

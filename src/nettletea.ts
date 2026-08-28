@@ -60,13 +60,26 @@ function normalizeTargets(body: SendBody): {to_users: string[]; to_channels: str
     return {to_channels, to_users};
 }
 
-async function resolveTargets({overrideTo, to_users, to_channels, slackClient}: ResolveTargetArgs): Promise<string[]> {
+interface ResolvedTarget {
+    id: string;
+    recipient: string;
+}
+
+async function resolveTargets({
+    overrideTo,
+    to_users,
+    to_channels,
+    slackClient,
+}: ResolveTargetArgs): Promise<ResolvedTarget[]> {
     if (overrideTo) {
-        return [await getUserId(overrideTo, slackClient)];
+        return [{id: await getUserId(overrideTo, slackClient), recipient: overrideTo}];
     }
-    const users = await resolveUserIds(to_users, slackClient);
-    const channels = await resolveChannelIds(to_channels, slackClient);
-    return [...users, ...channels];
+    const userIds = await resolveUserIds(to_users, slackClient);
+    const channelIds = await resolveChannelIds(to_channels, slackClient);
+    return [
+        ...to_users.map((recipient, i) => ({id: userIds[i], recipient})),
+        ...to_channels.map((recipient, i) => ({id: channelIds[i], recipient})),
+    ];
 }
 
 function mkSendHandler(
@@ -93,11 +106,32 @@ function mkSendHandler(
                 ...normalizeTargets(request.body),
             });
 
-            for (const channel of targets)
-                await slackClient.chat.postMessage({
-                    channel,
-                    ...rendered,
-                } as ChatPostMessageArguments);
+            const results = await Promise.allSettled(
+                targets.map(({id}) =>
+                    slackClient.chat.postMessage({
+                        channel: id,
+                        ...rendered,
+                    } as ChatPostMessageArguments),
+                ),
+            );
+
+            const failed = results.flatMap((result, i) => {
+                if (result.status === 'fulfilled') return [];
+                const {recipient} = targets[i];
+                reply.log.error({error: result.reason, recipient}, 'failed to send to recipient');
+                return [
+                    {error: result.reason instanceof Error ? result.reason.message : String(result.reason), recipient},
+                ];
+            });
+
+            if (failed.length > 0) {
+                await reply.code(502).send({
+                    error: 'SendFailed',
+                    failed,
+                    message: `failed to send to ${failed.length} of ${targets.length} recipient(s)`,
+                });
+                return;
+            }
             await reply.code(204).send();
         } catch (error) {
             await sendErrorReply(reply, error);
@@ -238,6 +272,24 @@ export async function nettleTea(opts: NettleTeaArgs) {
                     '204': {
                         description: 'Successful response',
                         type: 'null',
+                    },
+                    '502': {
+                        description: 'One or more recipients failed to receive the message',
+                        properties: {
+                            error: {type: 'string'},
+                            failed: {
+                                items: {
+                                    properties: {
+                                        error: {type: 'string'},
+                                        recipient: {type: 'string'},
+                                    },
+                                    type: 'object',
+                                },
+                                type: 'array',
+                            },
+                            message: {type: 'string'},
+                        },
+                        type: 'object',
                     },
                     '503': {
                         description: 'Slack sending is disabled because no Slack token is configured',
