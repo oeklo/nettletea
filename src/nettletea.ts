@@ -2,7 +2,7 @@ import path from 'node:path';
 import {Type} from '@fastify/type-provider-typebox';
 import type {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
 import '@fastify/swagger';
-import slack, {type ChatPostMessageArguments, WebClient, type WebClientOptions} from '@slack/web-api';
+import type {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import i18next, {type TFunction} from 'i18next';
 
 import {createResolvers, getUserId, NotFound, resolveChannelIds, resolveUserIds, SlackNotConfigured} from './slack.js';
@@ -85,24 +85,15 @@ async function resolveTargets({
 interface SendHandlerArgs {
     template: Template<any>;
     t: TFunction;
-    slackClient: WebClient;
+    slackClient?: WebClient;
     resolvers: Resolvers;
-    slackConfigured: boolean;
     overrideTo?: string;
     bccChannel?: string;
 }
 
-function mkSendHandler({
-    template,
-    t,
-    slackClient,
-    resolvers,
-    slackConfigured,
-    overrideTo,
-    bccChannel,
-}: SendHandlerArgs) {
+function mkSendHandler({template, t, slackClient, resolvers, overrideTo, bccChannel}: SendHandlerArgs) {
     return async (request: FastifyRequest<{Body: SendBody}>, reply: FastifyReply) => {
-        if (!slackConfigured) {
+        if (slackClient === undefined) {
             await reply.code(503).send({error: 'Slack sending is disabled: no Slack token configured'});
             return;
         }
@@ -178,21 +169,12 @@ interface NettleTeaArgs {
     overrideTo?: string;
     root: string;
     server: FastifyInstance;
-    slackOptions?: WebClientOptions;
-    slackToken?: string;
+    slackClient?: WebClient;
     templates: {[templateName: string]: Template<any>};
 }
 
 export async function nettleTea(opts: NettleTeaArgs) {
-    const slackConfigured = Boolean(opts.slackToken);
-    const slackClient = new WebClient(
-        opts.slackToken,
-        opts.slackOptions ?? {
-            retryConfig: slack.retryPolicies.tenRetriesInAboutThirtyMinutes,
-        },
-    );
-
-    const resolvers = createResolvers(slackClient, slackConfigured);
+    const resolvers = createResolvers(opts.slackClient);
 
     const root_ = path.join(opts.root, '/t');
 
@@ -244,8 +226,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
             bccChannel: opts.bccChannel,
             overrideTo: opts.overrideTo,
             resolvers,
-            slackClient,
-            slackConfigured,
+            slackClient: opts.slackClient,
             t,
             template,
         });

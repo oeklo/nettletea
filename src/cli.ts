@@ -2,10 +2,12 @@
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import type {TypeBoxTypeProvider} from '@fastify/type-provider-typebox';
+import slack, {WebClient} from '@slack/web-api';
 import Fastify from 'fastify';
 import yargs from 'yargs';
 import {hideBin} from 'yargs/helpers';
 import {discoverTemplates} from './discover.js';
+import {mkReadinessHandler} from './endpoints.js';
 import {nettleTea} from './nettletea.js';
 
 function readPkg(): {version: string} {
@@ -32,6 +34,7 @@ async function registerDocumentation(server: ReturnType<typeof createServer>) {
 
 async function main() {
     const argv = await parseArgs();
+    const root = argv.root;
 
     const slackToken = process.env.SLACK_TOKEN;
     if (!slackToken) {
@@ -42,9 +45,27 @@ async function main() {
 
     const server = createServer();
 
+    server.route({
+        handler: async () => ({status: 'ok'}),
+        method: 'GET',
+        url: path.join(root, 'health'),
+    });
+
     if (argv.openapi) {
         await registerDocumentation(server);
     }
+
+    const slackClient = !slackToken
+        ? undefined
+        : new WebClient(slackToken, {
+              retryConfig: slack.retryPolicies.tenRetriesInAboutThirtyMinutes,
+          });
+
+    server.route({
+        handler: mkReadinessHandler(slackClient),
+        method: 'GET',
+        url: path.join(root, 'health/ready'),
+    });
 
     const templates = await discoverTemplates(templatesDir);
 
@@ -52,9 +73,9 @@ async function main() {
         bccChannel: argv.bccChannel,
         lang: argv.lang,
         overrideTo: argv.overrideTo,
-        root: argv.root,
+        root,
         server,
-        slackToken,
+        slackClient,
         templates,
     });
 

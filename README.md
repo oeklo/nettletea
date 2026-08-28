@@ -68,6 +68,16 @@ Each template gets three routes: `POST /t/<name>` (render only), `POST /t/<name>
 with a Block Kit Builder preview URL - as a plain-text body by default, or as
 a `Location` header with `?mode=header`).
 
+### Health and readiness
+
+Two operational endpoints are always registered, independent of `--root`:
+
+- `GET /health` - liveness. Always `200`, no dependencies. Wire this as a
+  Kubernetes `livenessProbe`.
+- `GET /health/ready` - readiness. `200` with `{slack: 'disabled'}` if no
+  `SLACK_TOKEN` is configured; otherwise calls Slack's `auth.test` (cached
+  10s) and returns `200 {slack: 'ok'}` or `503 {slack: 'unreachable'}`. 
+
 ### CLI options
 
 Run `nettletea --help` for the up-to-date list

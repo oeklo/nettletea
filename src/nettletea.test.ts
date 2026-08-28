@@ -1,4 +1,5 @@
 import {Type} from '@fastify/type-provider-typebox';
+import {WebClient} from '@slack/web-api';
 import Fastify from 'fastify';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {nettleTea} from './nettletea.js';
@@ -46,8 +47,7 @@ const resolvingTemplate: Template<{email: string}> = {
 
 const defaultOpts = {
     root: '/',
-    slackOptions: {},
-    slackToken: 'xoxb-test',
+    slackClient: new WebClient('xoxb-test', {}),
 };
 
 beforeEach(() => {
@@ -247,7 +247,7 @@ describe('nettleTea routes', () => {
     describe('without a Slack token configured', () => {
         it('POST /t/<name> still renders', async () => {
             const server = Fastify();
-            await nettleTea({...defaultOpts, server, slackToken: undefined, templates: {test: testTemplate}});
+            await nettleTea({...defaultOpts, server, slackClient: undefined, templates: {test: testTemplate}});
 
             const res = await server.inject({
                 method: 'POST',
@@ -261,7 +261,7 @@ describe('nettleTea routes', () => {
 
         it('POST /t/<name>/send returns 503 without attempting to resolve or post anything', async () => {
             const server = Fastify();
-            await nettleTea({...defaultOpts, server, slackToken: undefined, templates: {test: testTemplate}});
+            await nettleTea({...defaultOpts, server, slackClient: undefined, templates: {test: testTemplate}});
 
             const res = await server.inject({
                 method: 'POST',
@@ -277,7 +277,12 @@ describe('nettleTea routes', () => {
 
         it('POST /t/<name> returns 503 if the template itself calls a resolver', async () => {
             const server = Fastify();
-            await nettleTea({...defaultOpts, server, slackToken: undefined, templates: {resolving: resolvingTemplate}});
+            await nettleTea({
+                ...defaultOpts,
+                server,
+                slackClient: undefined,
+                templates: {resolving: resolvingTemplate},
+            });
 
             const res = await server.inject({
                 method: 'POST',

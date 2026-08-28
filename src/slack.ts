@@ -114,8 +114,8 @@ export async function resolveUserIds(emails: string[], slack: WebClient): Promis
     return Promise.all(emails.map(async email => await getUserId(email, slack)));
 }
 
-export function createResolvers(slack: WebClient, configured: boolean): Resolvers {
-    if (!configured) {
+export function createResolvers(slack?: WebClient): Resolvers {
+    if (slack === undefined) {
         const notConfigured = (): never => {
             throw new SlackNotConfigured();
         };
