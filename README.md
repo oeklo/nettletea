@@ -100,8 +100,8 @@ Every option above is also readable from an env var of the same name:
 `BCC_CHANNEL`
 : Same as `--bcc-channel`. Send a copy of every send to this channel (name, not ID), in addition to the real recipients. Suppressed when `OVERRIDE_TO` is active.
 
-`SWAGGER`
-: Same as `--swagger`. Serve OpenAPI docs (JSON, YAML, and UI) at `/documentation`. Must be the literal string `"true"` or `"false"` - other values (e.g. `"1"`) are not recognized.
+`OPENAPI`
+: Same as `--openapi`. Serve OpenAPI docs (JSON, YAML, and UI) at `/documentation`. Must be the literal string `"true"` or `"false"` - other values (e.g. `"1"`) are not recognized.
 
 ### Templates using enums, namespaces, or decorators
 

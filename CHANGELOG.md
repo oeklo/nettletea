@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Allow no template translations.
 - Added `to: ({ user: string } | { channel: string })[]` as the preferred way to address `/send` targets.
+- Breaking: renamed `--swagger` to `--openapi`.
 
 ### Deprecated
 

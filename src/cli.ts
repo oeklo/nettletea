@@ -42,7 +42,7 @@ async function main() {
 
     const server = createServer();
 
-    if (argv.swagger) {
+    if (argv.openapi) {
         await registerDocumentation(server);
     }
 
@@ -78,7 +78,7 @@ async function parseArgs() {
         .parserConfiguration({'duplicate-arguments-array': false})
         .options({
             'bcc-channel': {
-                describe: 'Send a copy of every send to this channel (name, not ID)',
+                describe: 'Channel name to send a copy of every message to',
                 type: 'string',
             },
             host: {
@@ -89,6 +89,11 @@ async function parseArgs() {
             lang: {
                 describe: 'Default i18next language',
                 type: 'string',
+            },
+            openapi: {
+                default: false,
+                describe: 'Serve OpenAPI docs (JSON, YAML, and UI) at /documentation',
+                type: 'boolean',
             },
             'override-to': {
                 describe: 'Force every send to one address',
@@ -104,11 +109,6 @@ async function parseArgs() {
                 default: '/',
                 describe: 'Route prefix',
                 type: 'string',
-            },
-            swagger: {
-                default: false,
-                describe: 'Serve OpenAPI docs (JSON, YAML, and UI) at /documentation',
-                type: 'boolean',
             },
             templates: {
                 alias: 't',
