@@ -32,7 +32,8 @@
             "preset": "recommended",
             "style": {
                 "noNonNullAssertion": "off",
-                "noUselessElse": "off"
+                "noUselessElse": "off",
+                "useShorthandAssign": "on"
             },
             "suspicious": {
                 "noExplicitAny": "off",
