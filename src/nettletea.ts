@@ -82,15 +82,25 @@ async function resolveTargets({
     ];
 }
 
-function mkSendHandler(
-    template: Template<any>,
-    t: TFunction,
-    slackClient: WebClient,
-    resolvers: Resolvers,
-    slackConfigured: boolean,
-    overrideTo?: string,
-    bccChannel?: string,
-) {
+interface SendHandlerArgs {
+    template: Template<any>;
+    t: TFunction;
+    slackClient: WebClient;
+    resolvers: Resolvers;
+    slackConfigured: boolean;
+    overrideTo?: string;
+    bccChannel?: string;
+}
+
+function mkSendHandler({
+    template,
+    t,
+    slackClient,
+    resolvers,
+    slackConfigured,
+    overrideTo,
+    bccChannel,
+}: SendHandlerArgs) {
     return async (request: FastifyRequest<{Body: SendBody}>, reply: FastifyReply) => {
         if (!slackConfigured) {
             await reply.code(503).send({error: 'Slack sending is disabled: no Slack token configured'});
@@ -230,15 +240,15 @@ export async function nettleTea(opts: NettleTeaArgs) {
         });
 
         const url = path.join(root_, `${name}/send`);
-        const handler = mkSendHandler(
-            template,
-            t,
-            slackClient,
+        const handler = mkSendHandler({
+            bccChannel: opts.bccChannel,
+            overrideTo: opts.overrideTo,
             resolvers,
+            slackClient,
             slackConfigured,
-            opts.overrideTo,
-            opts.bccChannel,
-        );
+            t,
+            template,
+        });
         opts.server.route({
             handler,
             method: 'POST',
