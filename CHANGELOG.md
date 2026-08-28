@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.0] - 2026-08-28
 ### Added
 
 - Nettle Tea now runs as a standalone CLI.
@@ -14,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Allow no template translations.
+- Allow template without translations.
 - Added `to: ({ user: string } | { channel: string })[]` as the preferred way to address `/send` targets.
 - Breaking: renamed `--swagger` to `--openapi`.
 
@@ -22,8 +24,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `to_users` and `to_channels` in `/send` body.
 
-### Removed
-
-### Fixed
-
-### Security
+[Unreleased]: https://github.com/oeklo/nettletea/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/oeklo/nettletea/compare/v0.2.0...v0.3.0
