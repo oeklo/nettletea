@@ -1,5 +1,5 @@
 import path from 'node:path';
-import {Type} from '@fastify/type-provider-typebox';
+import {Type, type TSchemaOptions} from '@fastify/type-provider-typebox';
 import type {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
 import '@fastify/swagger';
 import type {ChatPostMessageArguments, WebClient} from '@slack/web-api';
@@ -184,7 +184,7 @@ export async function nettleTea(opts: NettleTeaArgs) {
     });
 
     for (const [name, template] of Object.entries(opts.templates)) {
-        const schemaId = template.schema.$id ?? `${name}Input`;
+        const schemaId = (template.schema as TSchemaOptions).$id ?? `${name}Input`;
         opts.server.addSchema({
             $id: schemaId,
             examples: Object.values(template.examples),

@@ -10,20 +10,19 @@
         "@fastify/swagger": "^9",
         "@fastify/swagger-ui": "^6",
         "@fastify/type-provider-typebox": "^6",
-        "@sinclair/typebox": "^0.34.52",
         "@slack/web-api": "^8",
         "fastify": "^5",
-        "i18next": "^24",
-        "yargs": "^17"
+        "i18next": "^26",
+        "yargs": "^18"
     },
     "devDependencies": {
         "@slack/types": "^3",
         "@types/node": "^26",
         "@types/yargs": "^17",
-        "tsdown": "^0.22.14",
+        "tsdown": "^0.23",
         "tsx": "^4",
         "typescript": "^7",
-        "vitest": "^4"
+        "vitest": "^5"
     },
     "files": [
         "dist"
